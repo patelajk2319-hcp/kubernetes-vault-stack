@@ -1,0 +1,22 @@
+# Certificates
+certs/
+
+# Vault data
+vault-init.json
+*.snap
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vault
+  namespace: vault-stack
+  labels:
+    app: vault
+spec:
+  serviceName: vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: vault-permission-fix
+        image: busybox:latest
+        command: ['sh', '-c', 'chown -R 1000:1000 /vault/file && chmod -R 755 /vault/file']
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/file
+      containers:
+      - name: vault
+        image: docker.io/hashicorp/vault-enterprise:1.20-ent
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_LICENSE
+          valueFrom:
+            secretKeyRef:
+              name: vault-license
+              key: license
+        - name: VAULT_LOG_LEVEL
+          value: "info"
+        ports:
+        - containerPort: 8200
+          name: http
+          protocol: TCP
+        - containerPort: 8201
+          name: cluster
+          protocol: TCP
+        securityContext:
+          capabilities:
+            add:
+            - IPC_LOCK
+        volumeMounts:
+        - name: vault-config
+          mountPath: /vault/config
+          readOnly: true
+        - name: vault-data
+          mountPath: /vault/file
+        - name: vault-logs
+          mountPath: /vault/logs
+        livenessProbe:
+          httpGet:
+            path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+            port: 8200
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+            port: 8200
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: vault-config
+        configMap:
+          name: vault-config
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: vault-data-pvc
+      - name: vault-logs
+        persistentVolumeClaim:
+          claimName: vault-logs-pvc

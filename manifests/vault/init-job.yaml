@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-scripts
+  namespace: vault-stack
+data:
+  vault-init.sh: |
+    #!/usr/bin/env bash
+    set -o pipefail
+
+    export VAULT_ADDR=http://vault:8200
+
+    echo "Checking Vault status..."
+    vault status || true
+
+    echo "Initializing Vault..."
+    vault operator init -format=json | tee /vault-init/vault-init.json
+
+    echo "Waiting for Vault to initialize..."
+    sleep 10
+
+    echo "Unsealing Vault..."
+    export VAULT_TOKEN=$(cat /vault-init/vault-init.json | jq -r '.root_token')
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[0]')
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[1]')
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[2]')
+
+    echo "Checking Vault status after unsealing..."
+    vault status
+
+    echo "Enabling audit logs..."
+    vault audit enable -path="audit_log" file file_path=/vault/logs/vault_audit.log mode=644
+    vault audit enable -path="audit_stdout" file file_path=stdout
+
+    echo "✅ Vault initialized, unsealed and audit logs enabled"
+
+  vault-unseal.sh: |
+    #!/usr/bin/env bash
+    set -e
+
+    export VAULT_ADDR=http://vault:8200
+
+    if [ ! -f /vault-init/vault-init.json ]; then
+      echo "❌ Error: vault-init.json not found!"
+      exit 1
+    fi
+
+    echo "Checking Vault status..."
+    vault status || true
+
+    echo "Unsealing Vault..."
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[0]')
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[1]')
+    vault operator unseal $(cat /vault-init/vault-init.json | jq -r '.unseal_keys_b64[2]')
+
+    echo "✅ Vault unsealed successfully"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+  namespace: vault-stack
+  labels:
+    app: vault-init
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: vault-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: vault-init
+        image: docker.io/hashicorp/vault-enterprise:1.20-ent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          chmod +x /scripts/vault-init.sh
+          /scripts/vault-init.sh
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault:8200"
+        volumeMounts:
+        - name: vault-scripts
+          mountPath: /scripts
+          readOnly: true
+        - name: vault-init-data
+          mountPath: /vault-init
+      volumes:
+      - name: vault-scripts
+        configMap:
+          name: vault-scripts
+          defaultMode: 0755
+      - name: vault-init-data
+        emptyDir: {}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-unseal
+  namespace: vault-stack
+  labels:
+    app: vault-unseal
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: vault-unseal
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: vault-unseal
+        image: docker.io/hashicorp/vault-enterprise:1.20-ent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          chmod +x /scripts/vault-unseal.sh
+          /scripts/vault-unseal.sh
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault:8200"
+        volumeMounts:
+        - name: vault-scripts
+          mountPath: /scripts
+          readOnly: true
+        - name: vault-init-data
+          mountPath: /vault-init
+          readOnly: true
+      volumes:
+      - name: vault-scripts
+        configMap:
+          name: vault-scripts
+          defaultMode: 0755
+      - name: vault-init-data
+        persistentVolumeClaim:
+          claimName: vault-data-pvc
