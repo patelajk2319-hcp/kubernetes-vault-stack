@@ -33,6 +33,7 @@ task up
 
 This command will:
 - Check prerequisites
+- Build Helm chart dependencies (Redis, Elasticsearch subcharts)
 - Create TLS certificates
 - Deploy Helm chart with all components
 - Set up port-forwarding automatically
@@ -102,14 +103,18 @@ vault secrets list
 
 ### Service Credentials
 
+Default credentials are defined in `helm-chart/vault-stack/values/secrets/secrets.yaml` (base64 encoded):
+
 | Service | Username | Password |
 |---------|----------|----------|
 | Elasticsearch | `elastic` | `password123` |
 | Kibana | `elastic` | `password123` |
 | Grafana | `admin` | `admin` |
-| Redis | `vault-root-user` | `SuperSecretPass123` |
+| Redis | `vault-root-user` | `VaultRootPass123!` |
 
 Run `task info` to display all credentials.
+
+⚠️ **Important**: These are default development credentials committed to the repository for ease of use. **Change these before deploying to production!**
 
 ## Usage Examples
 
@@ -164,13 +169,29 @@ task unseal
 
 ### Helm Values
 
-Customize the deployment by editing `helm-chart/vault-stack/values.yaml`:
+The deployment uses a modular values structure in `helm-chart/vault-stack/values/`:
+
+```
+values/
+├── common/common.yaml          # Global settings (namespace)
+├── vault/vault.yaml            # Vault configuration
+├── elasticsearch/elasticsearch.yaml
+├── kibana/kibana.yaml
+├── redis/redis.yaml
+├── prometheus/prometheus.yaml
+├── grafana/grafana.yaml
+├── loki/loki.yaml
+├── promtail/promtail.yaml
+└── secrets/secrets.yaml        # All credentials and secrets
+```
+
+Each service has its own values file for easy customization:
 
 - Resource limits and requests
 - Replica counts
 - Storage sizes
 - Enable/disable components
-- **Change default passwords!**
+- **Change default passwords in `secrets/secrets.yaml`!**
 
 After making changes:
 
@@ -285,18 +306,25 @@ kubectl config get-contexts
 ⚠️ **This configuration is for development/testing purposes:**
 
 - Uses self-signed certificates
-- Default passwords in `values.yaml`
+- **Default passwords are committed in `secrets/secrets.yaml` for convenience** - you know the passwords because they're in the repo
 - Single Vault unseal key (not recommended for production)
 - Secrets stored in Kubernetes secrets (base64 encoded)
+
+**For production deployments:**
+1. Create a `secrets.yaml.example` and add actual `secrets/secrets.yaml` to `.gitignore`
+2. Use external secret management (AWS Secrets Manager, Azure Key Vault, etc.)
+3. Use the External Secrets Operator to sync secrets into Kubernetes
+4. Or use SOPS/sealed-secrets to encrypt sensitive values
 
 ## Development
 
 ### Adding New Services
 
 1. Add service definition to `helm-chart/vault-stack/templates/`
-2. Update `values.yaml` with configuration
-3. Add port-forward in `scripts/20_port_forwarding.sh`
-4. Update `task info` in `scripts/tools/info.sh`
+2. Create new values file in `helm-chart/vault-stack/values/<service>/<service>.yaml`
+3. Add values file to `scripts/10_deploy_helm.sh` VALUES_FILES array
+4. Add port-forward in `scripts/20_port_forwarding.sh`
+5. Update `task info` in `scripts/tools/info.sh`
 
 
 ## Related Projects
