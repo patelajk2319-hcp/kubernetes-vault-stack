@@ -289,53 +289,6 @@ kubectl config get-contexts
 - Single Vault unseal key (not recommended for production)
 - Secrets stored in Kubernetes secrets (base64 encoded)
 
-**For production deployments:**
-
-1. **Change all default passwords** in `helm-chart/vault-stack/values.yaml`
-2. **Use proper certificate management** (e.g., cert-manager)
-3. **Use Vault auto-unseal** with cloud KMS (AWS, Azure, GCP)
-4. **Implement 5 key shares with 3 threshold** for Vault unsealing
-5. **Enable Vault audit logging** to Elasticsearch or files
-6. **Use external secrets management** for Kubernetes secrets
-7. **Implement proper RBAC** for Kubernetes resources
-8. **Enable mTLS** for all service-to-service communication
-9. **Regular backups** of Vault data and Raft snapshots
-10. **Monitor and alert** on Vault seal status and metrics
-
-## Project Structure
-
-```
-.
-├── Taskfile.yaml                    # Task automation definitions
-├── .env                            # Vault environment variables (auto-generated)
-├── vault-init.json                 # Vault initialization output (auto-generated)
-├── certs/                          # TLS certificates (auto-generated)
-│   ├── ca/
-│   ├── elasticsearch/
-│   ├── kibana/
-│   └── fleet-server/
-├── helm-chart/
-│   └── vault-stack/
-│       ├── Chart.yaml              # Helm chart metadata
-│       ├── values.yaml             # Configuration values
-│       └── templates/              # Kubernetes manifests
-└── scripts/
-    ├── lib/
-    │   └── colors.sh              # Centralized color configuration
-    ├── tools/
-    │   ├── destroy.sh             # Stack cleanup
-    │   ├── info.sh                # Access information display
-    │   ├── logs.sh                # Service logs viewer
-    │   ├── pre-deploy-checks.sh   # Pre-deployment validation
-    │   └── status.sh              # Component status display
-    ├── 00_create-certs.sh         # Certificate generation
-    ├── 01_secrets_from_certs.sh   # Create Kubernetes secrets
-    ├── 10_deploy_helm.sh          # Helm deployment
-    ├── 20_port_forwarding.sh      # Port-forwarding setup
-    ├── 30_vault_init.sh           # Vault initialization
-    └── 40_vault_unseal.sh         # Vault unsealing
-```
-
 ## Development
 
 ### Adding New Services
@@ -345,30 +298,6 @@ kubectl config get-contexts
 3. Add port-forward in `scripts/20_port_forwarding.sh`
 4. Update `task info` in `scripts/tools/info.sh`
 
-### Modifying Colors
-
-All scripts use centralized colors from `scripts/lib/colors.sh`:
-
-```bash
-GREEN='\033[0;32m'    # Success messages
-YELLOW='\033[1;33m'   # Warnings
-BLUE='\033[0;34m'     # Informational messages
-NC='\033[0m'          # No Color
-```
-
-## License
-
-This stack deploys Vault Enterprise which requires a valid license.
-
-- Obtain a trial license from [HashiCorp](https://www.hashicorp.com/products/vault/trial)
-- Add your license to the `.env` file under `VAULT_LICENSE`
-
-## Support
-
-For issues and questions:
-- Review the [Troubleshooting](#troubleshooting) section
-- Check component logs: `task logs -- <service-name>`
-- Verify cluster status: `task status`
 
 ## Related Projects
 
