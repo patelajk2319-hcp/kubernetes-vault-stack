@@ -1,6 +1,3 @@
-# Kubernetes Vault Stack
-
-Production-ready Kubernetes deployment of HashiCorp Vault Enterprise with observability stack (Prometheus, Grafana, Loki, Elasticsearch, Kibana).
 
 ## Overview
 
