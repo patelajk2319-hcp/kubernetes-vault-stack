@@ -24,9 +24,50 @@ spec:
         - containerPort: {{ .Values.redis.service.port }}
           name: redis
           protocol: TCP
+        env:
+        - name: VAULT_ROOT_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultRootUserPasswordKey }}
+        - name: VAULT_DYNAMIC_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultDynamicUserPasswordKey }}
+        - name: VAULT_STATIC_USER_1_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultStaticUser1PasswordKey }}
+        - name: VAULT_STATIC_USER_2_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultStaticUser2PasswordKey }}
+        - name: VAULT_STATIC_USER_3_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultStaticUser3PasswordKey }}
+        - name: VAULT_STATIC_USER_4_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.credentials.secretName }}
+              key: {{ .Values.redis.credentials.vaultStaticUser4PasswordKey }}
         command:
-        - redis-server
-        - /usr/local/etc/redis/redis-users.conf
+        - sh
+        - -c
+        - |
+          # Substitute environment variables in the config file
+          sed -e "s/\${VAULT_ROOT_USER_PASSWORD}/$VAULT_ROOT_USER_PASSWORD/g" \
+              -e "s/\${VAULT_DYNAMIC_USER_PASSWORD}/$VAULT_DYNAMIC_USER_PASSWORD/g" \
+              -e "s/\${VAULT_STATIC_USER_1_PASSWORD}/$VAULT_STATIC_USER_1_PASSWORD/g" \
+              -e "s/\${VAULT_STATIC_USER_2_PASSWORD}/$VAULT_STATIC_USER_2_PASSWORD/g" \
+              -e "s/\${VAULT_STATIC_USER_3_PASSWORD}/$VAULT_STATIC_USER_3_PASSWORD/g" \
+              -e "s/\${VAULT_STATIC_USER_4_PASSWORD}/$VAULT_STATIC_USER_4_PASSWORD/g" \
+              /usr/local/etc/redis/redis-users.conf > /tmp/redis-users.conf
+          redis-server /tmp/redis-users.conf
         volumeMounts:
         - name: redis-config
           mountPath: /usr/local/etc/redis

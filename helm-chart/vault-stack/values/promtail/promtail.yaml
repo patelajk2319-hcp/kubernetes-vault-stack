@@ -1,0 +1,15 @@
+# Promtail configuration
+promtail:
+  enabled: true
+  image:
+    repository: grafana/promtail
+    tag: "2.9.3"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"

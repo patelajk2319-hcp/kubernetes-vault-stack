@@ -1,0 +1,49 @@
+# Elasticsearch configuration
+elasticsearch:
+  enabled: true
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.12.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    discoveryType: single-node
+    javaOpts: "-Xms256m -Xmx256m"
+    vmMaxMapCount: 262144
+
+  security:
+    enabled: true
+    enrollmentEnabled: false
+    http:
+      sslEnabled: true
+      sslVerificationMode: certificate
+    transport:
+      sslEnabled: true
+      sslVerificationMode: certificate
+
+  credentials:
+    secretName: elasticsearch-credentials
+    elasticPasswordKey: elastic-password
+
+  certs:
+    secretName: elasticsearch-certs
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  service:
+    type: ClusterIP
+    httpPort: 9200
+    transportPort: 9300
+
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""

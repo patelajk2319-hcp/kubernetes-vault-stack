@@ -1,0 +1,26 @@
+# Loki configuration
+loki:
+  enabled: true
+  image:
+    repository: grafana/loki
+    tag: "2.9.3"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  service:
+    type: ClusterIP
+    port: 3100
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""

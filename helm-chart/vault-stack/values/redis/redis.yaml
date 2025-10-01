@@ -1,0 +1,39 @@
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    maxmemory: "256mb"
+    maxmemoryPolicy: "allkeys-lru"
+
+  credentials:
+    secretName: redis-credentials
+    vaultRootUserPasswordKey: vault-root-user-password
+    vaultDynamicUserPasswordKey: vault-dynamic-user-password
+    vaultStaticUser1PasswordKey: vault-static-user1-password
+    vaultStaticUser2PasswordKey: vault-static-user2-password
+    vaultStaticUser3PasswordKey: vault-static-user3-password
+    vaultStaticUser4PasswordKey: vault-static-user4-password
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
