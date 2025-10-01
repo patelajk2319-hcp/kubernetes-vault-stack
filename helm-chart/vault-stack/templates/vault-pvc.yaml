@@ -1,0 +1,36 @@
+{{- if .Values.vault.enabled }}
+{{- if .Values.vault.persistence.data.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-data-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.vault.persistence.data.storageClass }}
+  storageClassName: {{ .Values.vault.persistence.data.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.vault.persistence.data.size }}
+{{- end }}
+{{- if .Values.vault.persistence.logs.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-logs-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.vault.persistence.logs.storageClass }}
+  storageClassName: {{ .Values.vault.persistence.logs.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.vault.persistence.logs.size }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,74 @@
+version: '3'
+
+vars:
+  NAMESPACE: vault-stack
+  RELEASE_NAME: vault-stack
+  CHART_PATH: ./helm-chart/vault-stack
+  VAULT_POD: vault-0
+
+tasks:
+  # Main deployment command
+  up:
+    desc: Deploy the entire Vault stack
+    cmds:
+      - task: pre-deploy-checks
+      - NAMESPACE={{.NAMESPACE}} ./scripts/01_secrets_from_certs.sh
+      - NAMESPACE={{.NAMESPACE}} RELEASE_NAME={{.RELEASE_NAME}} CHART_PATH={{.CHART_PATH}} ./scripts/10_deploy_helm.sh
+      - NAMESPACE={{.NAMESPACE}} ./scripts/20_port_forwarding.sh
+      - echo "Stack deployed successfully!"
+
+  # Initialise Vault
+  init:
+    desc: Initialise Vault
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/30_vault_init.sh
+
+  # Unseal Vault
+  unseal:
+    desc: Unseal Vault
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/40_vault_unseal.sh
+
+  # Clean/destroy everything
+  clean:
+    desc: Destroy the entire stack
+    aliases: [rm]
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} RELEASE_NAME={{.RELEASE_NAME}} ./scripts/tools/destroy.sh
+
+  # Show status of all components
+  status:
+    desc: Show status of all components
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/tools/status.sh
+
+  # Access info
+  info:
+    desc: Show access information and credentials
+    cmds:
+      - ./scripts/tools/info.sh
+
+  # Logs for a service
+  logs:
+    desc: View logs for a service
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/tools/logs.sh {{.CLI_ARGS}}
+
+  # Vault shell
+  shell:
+    desc: Open a shell in the Vault pod
+    cmds:
+      - kubectl exec -it -n {{.NAMESPACE}} {{.VAULT_POD}} -- /bin/sh
+
+  # Internal: Pre-deployment checks
+  pre-deploy-checks:
+    desc: "[Internal] Check if required tools are installed"
+    cmds:
+      - ./scripts/tools/pre-deploy-checks.sh
+
+  # Help - show available commands
+  default:
+    desc: Show available commands
+    cmds:
+      - task --list
+    silent: true

@@ -1,0 +1,13 @@
+{{- if .Values.promtail.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: promtail-data-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+{{- end }}

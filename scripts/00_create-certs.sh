@@ -2,7 +2,7 @@
 
 # Summary of what this script accomplishes:
 # 1. Creates a Certificate Authority (CA) that acts as a trusted root
-# 2. Generates TLS certificates for Elasticsearch and Kibana signed by the CA  
+# 2. Generates TLS certificates for Elasticsearch and Kibana signed by the CA
 # 3. Generates TLS certificate for Fleet Server - For Vault Integration
 # 4. Configures certificates with proper Subject Alternative Names for flexible hostname/IP usage
 # 5. Sets secure file permissions to protect private keys
@@ -10,29 +10,25 @@
 #
 # The resulting certificates enable encrypted TLS communication between:
 # - Clients and Elasticsearch
-# - Clients and Kibana  
+# - Clients and Kibana
 # - Elasticsearch and Kibana
-# - Fleet Server and Elastic Agent (NEW)
+# - Fleet Server and Elastic Agent
 
-
-# Define color codes for colored terminal output
-GREEN='\033[0;32m'    # Green text for success messages
-YELLOW='\033[1;33m'   # Yellow text for warnings
-BLUE='\033[0;34m'     # Blue text for informational messages
-NC='\033[0m'          # No Color - resets text color to default
+# Source centralized color configuration
+source "$(dirname "$0")/lib/colors.sh"
 
 # Configuration variables
 CERT_VALIDITY_DAYS=365  # Certificates will be valid for 1 year
 CERT_KEY_SIZE=4096      # RSA key size (4096 bits for strong security)
 
 # Step 1: Create directory structure for organizing certificates
-echo -e "${BLUE}🏗 Creating Certificate Directory Structure${NC}"
+echo -e "${BLUE}Creating Certificate Directory Structure${NC}"
 # Create nested directories: certs/ca, certs/elasticsearch, certs/kibana, certs/fleet-server
 mkdir -p certs/{ca,elasticsearch,kibana,fleet-server}
-echo -e "${GREEN}✅ Certificate directories created${NC}"
+echo -e "${GREEN}Certificate directories created${NC}"
 
 echo ""
-echo -e "${BLUE}🔐 Generating Certificate Authority (CA)${NC}"
+echo -e "${BLUE}Generating Certificate Authority (CA)${NC}"
 
 # Generate CA private key (4096-bit RSA)
 # This key will be used to sign all other certificates
@@ -45,10 +41,10 @@ openssl genrsa -out certs/ca/ca.key $CERT_KEY_SIZE
 # -subj: certificate subject information (Country, State, Location, Organization, etc.)
 openssl req -new -x509 -days $CERT_VALIDITY_DAYS -key certs/ca/ca.key -out certs/ca/ca.crt \
     -subj "/C=US/ST=CA/L=San Francisco/O=Elastic/OU=IT/CN=Elastic-Certificate-Authority"
-echo -e "${GREEN}✅ CA certificate created${NC}"
+echo -e "${GREEN}CA certificate created${NC}"
 
 echo ""
-echo -e "${BLUE}🔍 Generating Elasticsearch Certificate${NC}"
+echo -e "${BLUE}Generating Elasticsearch Certificate${NC}"
 
 # Generate Elasticsearch private key
 openssl genrsa -out certs/elasticsearch/elasticsearch.key $CERT_KEY_SIZE
@@ -82,10 +78,10 @@ openssl x509 -req -in certs/elasticsearch/elasticsearch.csr \
     -out certs/elasticsearch/elasticsearch.crt -days $CERT_VALIDITY_DAYS \
     -extfile certs/elasticsearch/elasticsearch.ext
 
-echo -e "${GREEN}✅ Elasticsearch certificate created${NC}"
+echo -e "${GREEN}Elasticsearch certificate created${NC}"
 
 echo ""
-echo -e "${BLUE}📊 Generating Kibana Certificate${NC}"
+echo -e "${BLUE}Generating Kibana Certificate${NC}"
 
 # Generate Kibana private key (same process as Elasticsearch)
 openssl genrsa -out certs/kibana/kibana.key $CERT_KEY_SIZE
@@ -116,10 +112,10 @@ openssl x509 -req -in certs/kibana/kibana.csr \
     -out certs/kibana/kibana.crt -days $CERT_VALIDITY_DAYS \
     -extfile certs/kibana/kibana.ext
 
-echo -e "${GREEN}✅ Kibana certificate created${NC}"
+echo -e "${GREEN}Kibana certificate created${NC}"
 
 echo ""
-echo -e "${BLUE}🚀 Generating Fleet Server Certificate for Vault integration${NC}"
+echo -e "${BLUE}Generating Fleet Server Certificate for Vault integration${NC}"
 
 # Generate Fleet Server private key
 openssl genrsa -out certs/fleet-server/fleet-server.key $CERT_KEY_SIZE
@@ -150,10 +146,10 @@ openssl x509 -req -in certs/fleet-server/fleet-server.csr \
     -out certs/fleet-server/fleet-server.crt -days $CERT_VALIDITY_DAYS \
     -extfile certs/fleet-server/fleet-server.ext
 
-echo -e "${GREEN}✅ Fleet Server certificate created${NC}"
+echo -e "${GREEN}Fleet Server certificate created${NC}"
 
 echo ""
-echo -e "${BLUE}🧹 Cleaning up temporary files${NC}"
+echo -e "${BLUE}Cleaning up temporary files${NC}"
 
 # Remove temporary files that are no longer needed
 # CSR files: only needed during certificate creation
@@ -165,7 +161,7 @@ rm -f certs/fleet-server/fleet-server.csr certs/fleet-server/fleet-server.ext
 rm -f certs/ca/ca.srl
 
 echo ""
-echo -e "${BLUE}🔒 Setting proper file permissions${NC}"
+echo -e "${BLUE}Setting proper file permissions${NC}"
 # Set directory permissions (755 = read/write/execute for owner, read/execute for group/others)
 chmod 755 certs certs/{ca,elasticsearch,kibana,fleet-server}
 
@@ -178,11 +174,11 @@ chmod 644 certs/ca/ca.crt certs/elasticsearch/elasticsearch.crt certs/kibana/kib
 chmod 600 certs/ca/ca.key certs/elasticsearch/elasticsearch.key certs/kibana/kibana.key certs/fleet-server/fleet-server.key
 
 echo ""
-echo -e "${GREEN}🎉 Certificate generation completed!${NC}"
+echo -e "${GREEN}Certificate generation completed${NC}"
 echo ""
 echo "Generated certificates:"
-echo "  🏛 CA: certs/ca/ca.crt (valid for $CERT_VALIDITY_DAYS days)"
-echo "  🔍 Elasticsearch: certs/elasticsearch/elasticsearch.crt"
-echo "  📊 Kibana: certs/kibana/kibana.crt"
-echo "  🚀 Fleet Server: certs/fleet-server/fleet-server.crt"
+echo "  CA: certs/ca/ca.crt (valid for $CERT_VALIDITY_DAYS days)"
+echo "  Elasticsearch: certs/elasticsearch/elasticsearch.crt"
+echo "  Kibana: certs/kibana/kibana.crt"
+echo "  Fleet Server: certs/fleet-server/fleet-server.crt"
 echo ""

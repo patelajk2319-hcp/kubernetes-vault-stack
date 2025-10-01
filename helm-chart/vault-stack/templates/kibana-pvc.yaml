@@ -1,0 +1,16 @@
+{{- if and .Values.kibana.enabled .Values.kibana.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kibana-data-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.kibana.persistence.storageClass }}
+  storageClassName: {{ .Values.kibana.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.kibana.persistence.size }}
+{{- end }}

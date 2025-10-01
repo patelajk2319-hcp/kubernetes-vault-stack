@@ -1,0 +1,324 @@
+# Default values for vault-stack
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  namespace: vault-stack
+
+# Vault configuration
+vault:
+  enabled: true
+  image:
+    repository: docker.io/hashicorp/vault-enterprise
+    tag: "1.20-ent"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    ui: true
+    disableMlock: true
+    defaultLeaseTtl: "1h"
+    maxLeaseTtl: "24h"
+    apiAddr: "http://vault:8200"
+    clusterAddr: "http://vault:8201"
+    logLevel: "info"
+
+  raft:
+    enabled: true
+    path: "/vault/file"
+    nodeId: "vault-0"
+
+  listener:
+    address: "0.0.0.0:8200"
+    tlsDisable: true
+
+  telemetry:
+    disableHostname: true
+    prometheusRetentionTime: "12h"
+    unauthenticatedMetricsAccess: true
+
+  # Vault license from secret
+  license:
+    secretName: vault-license
+    secretKey: license
+
+  # Vault token from secret
+  token:
+    secretName: vault-license
+    secretKey: token
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  service:
+    type: ClusterIP
+    port: 8200
+    clusterPort: 8201
+
+  persistence:
+    data:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+    logs:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+
+# Elasticsearch configuration
+elasticsearch:
+  enabled: true
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.12.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    discoveryType: single-node
+    javaOpts: "-Xms256m -Xmx256m"
+    vmMaxMapCount: 262144
+
+  security:
+    enabled: true
+    enrollmentEnabled: false
+    http:
+      sslEnabled: true
+      sslVerificationMode: certificate
+    transport:
+      sslEnabled: true
+      sslVerificationMode: certificate
+
+  credentials:
+    secretName: elasticsearch-credentials
+    elasticPasswordKey: elastic-password
+
+  certs:
+    secretName: elasticsearch-certs
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  service:
+    type: ClusterIP
+    httpPort: 9200
+    transportPort: 9300
+
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+
+# Kibana configuration
+kibana:
+  enabled: true
+  image:
+    repository: docker.elastic.co/kibana/kibana
+    tag: "8.12.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    elasticsearchHosts: "https://elasticsearch:9200"
+    elasticsearchUsername: "kibana_system"
+    sslVerificationMode: certificate
+    serverSslEnabled: true
+
+  credentials:
+    secretName: elasticsearch-credentials
+    kibanaPasswordKey: kibana-password
+
+  certs:
+    secretName: kibana-certs
+
+  encryptionKeys:
+    secretName: xpack-encryption-keys
+    secretKey: encryption-key
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  service:
+    type: ClusterIP
+    port: 5601
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    maxmemory: "256mb"
+    maxmemoryPolicy: "allkeys-lru"
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  image:
+    repository: prom/prometheus
+    tag: "v2.48.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  config:
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  service:
+    type: ClusterIP
+    port: 9090
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# Grafana configuration
+grafana:
+  enabled: true
+  image:
+    repository: grafana/grafana
+    tag: "10.2.2"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  credentials:
+    secretName: grafana-credentials
+    adminUserKey: admin-user
+    adminPasswordKey: admin-password
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+
+# Loki configuration
+loki:
+  enabled: true
+  image:
+    repository: grafana/loki
+    tag: "2.9.3"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  service:
+    type: ClusterIP
+    port: 3100
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# Promtail configuration
+promtail:
+  enabled: true
+  image:
+    repository: grafana/promtail
+    tag: "2.9.3"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Secrets configuration
+secrets:
+  # Vault license and token (base64 encoded)
+  vault:
+    license: "MDJNVjRVVTQzQks1SEdZWVRPSlpXRlFNVE1OTkVXVTMzSko1Q0ZVMlNPSVJBVENXU0VNNTJFMjZTTkdSSEZHTUJRSlpLRk0yMk1LUkJHUVRMS0lWMkZTNlNWUEpIRklWSlVMSkNHRzUyTkdKTVRJU0xKTzVVVlNNMldQSlNFT09MVUxKTUVVWlRCSzVJV1NUM0pKRVpGVVIyRk81SEVPVExaTEpCVEMyMk5OSlZYVVRDVUpVWUZVM0tWT1JIR1VXTFhKWlVUQzNLTkdKSVRLVFJTS1pXVlNNU1NORk5FSVozSkpSQlVVNERDTlpIREFXS1hQQlpWU1dDU09CUkRFTkxHTUZMVkMyS1BORkVYQ1NMSk81VVdDV0NPUEpTRk9WVEdNUkRXWTVDMktORVRNU0xLSkYzVTIyU1ZPUkdVSTIzVUpWQ0VNVktOS1JJVE1US1VKRTNFNFZDSk9WSEdVWTNZSlo1RkNNQ09LUlZUSVYzSkpGWlVTM1NPR0JNVlFTUlFMQVpWRTREQ0s1S1dTVDNKSkY0VTJSQ0pHRkdGSVFKVkpSS0VDNkNXSVJBWE9UM0tJRjNVNjJTQk81TFdTU0xUSkZXVk1ORERJNVdIU1dLWUtKWUdFTVJWTVpTRU8zRFVMSkpVU05TSk5KRVhPVExLTEYyRTJSQ0pPUkdXVTJDVkpWQ0VDTlNOSVJBVE1US0VJSlFVUzJMWE5GU0VPVlRaTUpMV1k1S1pMQkpIQVlSU0dWVEdJUjNNT1JORkdTSldKRlZFUzUyTk5KTVhJVEtFSkYyRTIyVElLVkdVSVFKV0pWQ0VDTlNOSVJCR0NTTEpPNVVXR1NDS09aTkVRVlRLTVJCVVNOU0pOWk5HUVpDWFBBWUVTMkxYTkZORzI2RElMSVpVMjJLUE5aWldTWVNYSEZWV0lWM1lOUlJYU1NKV0s1NFVVNURFSzU0REFZS1RHRlZWUzZKUlBKTVRFUlRUTEpKVVM0MkpOVlNITVpETktaNFdFM0tHT1ZNVEVWTFVNTkRUUzQzQks1SERLU0xKTzVVVlNWMlNHSk1WT05MS0xKTFZDNUMySTVEREFXS1RHRjNXRzNKWkdCTkZPVFJRTUZMVFM1S01MQkpIU1dLWEdWNUZVM0paUEZSRkdTTFRKRldVTTIzRU5WREhLV0pTS1pWVVlWMlNOQlNFT1JMVU1ORUVVNVRFSTVMR1VaQ0hOUjNHRTJKUk9KTkZRMjNVTUpMVU01S1pLNVNHWVlTWEtaMldJUTJLTVJURlFNQjVGWkFVUzJaUEpGTENXVlJRTlEyRlVNVFlHSVpHRVkzQ0xFWkhHNFRISEZCR1dOU0pHVkpIRVNMTEtFM1dTTkRISEUyVVNXRFZNVTNVUUsyWkdCRFVXNDJTSkpYRklORFdPSkNXU1UyWUpKQVdVM0pRT0pXSENWU1VOQkZXWU4zVk01MlVRNERHSVJORENaQ0JOTlJXQ05ERUtZWURHTVpZS0IzVzJWVE1NRjNFVVVCVU9CRkhRU0tKSEZDRE1WS0dKUktXQ1ZTUU5KVlZPU1RVTU5DRE00REJOUTNHNlQzR0k1WEVXTVQyS0JGVVVVVE5JNUVGTU0zRkxKM1hDUlRGRk5YVE8yWlBPTVZVQ1ZDT05CSUZVWjJURjVGVk1XTEhGNUZTVzNDSEtCM1VZTjNLSUo0RVNOMkhKNVFXV05TVk1GVVdDU0RQTVZWVEFVU1VONDNURVJDUkhVNlEK"
+    token: "aHZzLm1ZTjNRenRvcktSVm9TRkdlbGRweDlRNw=="
+
+  # Elasticsearch credentials (base64 encoded)
+  elasticsearch:
+    elasticPassword: "cGFzc3dvcmQxMjM="
+    kibanaPassword: "a2liYW5hX3Bhc3N3b3JkMTIz"
+
+  # Grafana credentials (base64 encoded)
+  grafana:
+    adminUser: "YWRtaW4="
+    adminPassword: "YWRtaW4="
+
+  # XPack encryption key (base64 encoded)
+  xpackEncryptionKey: "Zmhqc2tsb3BwZDY3OGVoa2RmZGxsaXZlcnBvb2xmY3I="

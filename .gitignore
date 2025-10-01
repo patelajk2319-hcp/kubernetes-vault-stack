@@ -1,15 +1,19 @@
-# Certificates
-certs/
-
-# Vault data
+# Vault initialization data
 vault-init.json
 *.snap
+
+# Certificates
+certs/
 
 # Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+
+# Helm
+helm-chart/**/charts/
+helm-chart/**/*.tgz
 
 # IDE
 .vscode/
@@ -20,3 +24,12 @@ vault-init.json
 # OS
 .DS_Store
 Thumbs.db
+
+**/.env
+.idea/
+vault-init.json
+
+# Ignore user-specific dot folders
+.claude
+!.gitignore
+!.github/

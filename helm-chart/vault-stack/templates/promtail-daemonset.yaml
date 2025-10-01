@@ -1,0 +1,62 @@
+{{- if .Values.promtail.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: promtail
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      serviceAccountName: promtail
+      containers:
+      - name: promtail
+        image: {{ .Values.promtail.image.repository }}:{{ .Values.promtail.image.tag }}
+        imagePullPolicy: {{ .Values.promtail.image.pullPolicy }}
+        args:
+        - -config.file=/etc/promtail/promtail.yml
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        ports:
+        - containerPort: 9080
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: promtail-config
+          mountPath: /etc/promtail
+          readOnly: true
+        - name: promtail-data
+          mountPath: /promtail
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: vault-logs
+          mountPath: /mnt/vault-logs
+          readOnly: true
+        resources:
+          {{- toYaml .Values.promtail.resources | nindent 10 }}
+      volumes:
+      - name: promtail-config
+        configMap:
+          name: promtail-config
+      - name: promtail-data
+        persistentVolumeClaim:
+          claimName: promtail-data-pvc
+      - name: varlog
+        hostPath:
+          path: /var/log
+          type: Directory
+      - name: vault-logs
+        persistentVolumeClaim:
+          claimName: vault-logs-pvc
+{{- end }}

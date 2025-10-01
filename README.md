@@ -1,349 +1,378 @@
 # Kubernetes Vault Stack
 
-A production-ready Kubernetes deployment of HashiCorp Vault Enterprise with full observability stack including Prometheus, Grafana, Loki, Elasticsearch, and Kibana.
+Production-ready Kubernetes deployment of HashiCorp Vault Enterprise with observability stack (Prometheus, Grafana, Loki, Elasticsearch, Kibana).
 
-## Architecture
+## Overview
 
-This stack includes:
-- **Vault Enterprise**: Secret management with Raft storage backend
-- **Redis**: Database backend for Vault testing
-- **Elasticsearch & Kibana**: Log aggregation and visualization (with TLS)
-- **Prometheus**: Metrics collection
-- **Grafana**: Unified observability dashboard
-- **Loki & Promtail**: Log aggregation for Kubernetes
+This stack deploys a complete Vault Enterprise environment on Kubernetes with:
+- **Security**: Vault Enterprise with Raft storage backend
+- **Monitoring**: Grafana, Prometheus, Loki, Promtail
+- **Data Services**: Redis, Elasticsearch, Kibana
+- **Observability**: Unified logging and metrics collection
 
 ## Prerequisites
 
 - Kubernetes cluster (1.20+)
-- kubectl configured and connected to your cluster
-- OpenSSL (for certificate generation)
-- Vault CLI (for initialization)
-- Valid Vault Enterprise license
+- `kubectl` configured and connected to cluster
+- `helm` 3.x
+- `task` (Task runner) - [Installation](https://taskfile.dev/installation/)
+- `jq` (JSON processor)
+- Vault Enterprise license (add to `.env` file)
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1. Clone Repository
 
 ```bash
-git clone https://github.com/patelajk2319-hcp/kubernetes-vault-stack.git
+git clone <repository-url>
 cd kubernetes-vault-stack
 ```
 
-### 2. Configure Secrets
-
-Edit `manifests/base/secrets.yaml` and add your base64-encoded Vault Enterprise license:
+### 2. Deploy the Stack
 
 ```bash
-echo -n "YOUR_VAULT_LICENSE" | base64
+task up
 ```
 
-Replace `REPLACE_WITH_BASE64_ENCODED_VAULT_LICENSE` with the output.
+This command will:
+- Check prerequisites
+- Create TLS certificates
+- Deploy Helm chart with all components
+- Set up port-forwarding automatically
 
-### 3. Deploy the Stack
+### 3. Initialize Vault
 
 ```bash
-./deploy.sh
+task init
 ```
 
-This script will:
-- Create the namespace
-- Generate TLS certificates for Elasticsearch and Kibana
-- Create all necessary Kubernetes resources
-- Deploy all services
+This generates:
+- Root token (saved to `.env`)
+- Unseal key (saved to `vault-init.json`)
 
-### 4. Initialize Vault
-
-After deployment completes, initialize Vault:
+### 4. Unseal Vault
 
 ```bash
-kubectl apply -f manifests/vault/init-job.yaml
+task unseal
 ```
 
-Retrieve the initialization data from the job logs:
+### 5. View Access Information
 
 ```bash
-kubectl logs -n vault-stack job/vault-init
+task info
 ```
 
-**⚠️ IMPORTANT**: Save the unseal keys and root token securely!
-
-### 5. Access Services
-
-Get your node IP:
+## Available Commands
 
 ```bash
-kubectl get nodes -o wide
+task              # List all available commands
+task up           # Deploy the entire stack
+task init         # Initialize Vault
+task unseal       # Unseal Vault
+task status       # Show status of all components
+task info         # Show access information and credentials
+task logs         # View logs for a service (usage: task logs -- <service-name>)
+task shell        # Open a shell in the Vault pod
+task clean        # Destroy the entire stack
+task rm           # Alias for clean
 ```
 
-Access the services:
-- **Vault UI**: `http://<node-ip>:30820`
-- **Grafana**: `http://<node-ip>:30300` (admin/admin)
-- **Prometheus**: `http://<node-ip>:30909`
-- **Kibana**: `https://<node-ip>:30561` (elastic/password123)
+## Accessing Services
 
-## Manual Deployment
+Port-forwarding is automatically configured during `task up`. Services are available at:
 
-If you prefer to deploy components individually:
+- **Vault UI**: http://localhost:8200/ui
+- **Vault CLI**: `source .env && vault status`
+- **Grafana**: http://localhost:3000
+- **Prometheus**: http://localhost:9090
+- **Elasticsearch**: https://localhost:9200
+- **Kibana**: https://localhost:5601
+- **Redis**: localhost:6379
 
-### 1. Create Namespace
+## Credentials
 
+### Vault
+After running `task init`, credentials are saved to:
+- **Root Token**: `.env` file (also in `vault-init.json`)
+- **Unseal Key**: `vault-init.json`
+
+To use Vault CLI:
 ```bash
-kubectl apply -f manifests/base/namespace.yaml
-```
-
-### 2. Create PVCs
-
-```bash
-kubectl apply -f manifests/base/persistent-volumes.yaml
-```
-
-### 3. Create Secrets
-
-```bash
-kubectl apply -f manifests/base/secrets.yaml
-```
-
-### 4. Generate Certificates
-
-```bash
-./scripts/00_create-certs.sh
-./scripts/create-k8s-secrets.sh
-```
-
-### 5. Create ConfigMaps
-
-```bash
-kubectl apply -f manifests/vault/configmap.yaml
-kubectl apply -f manifests/redis/configmap.yaml
-kubectl apply -f manifests/prometheus/configmap.yaml
-kubectl apply -f manifests/loki/configmap.yaml
-kubectl apply -f manifests/promtail/configmap.yaml
-kubectl apply -f manifests/grafana/configmap.yaml
-```
-
-### 6. Deploy Services
-
-```bash
-# Vault
-kubectl apply -f manifests/vault/statefulset.yaml
-kubectl apply -f manifests/vault/service.yaml
-
-# Redis
-kubectl apply -f manifests/redis/deployment.yaml
-kubectl apply -f manifests/redis/service.yaml
-
-# Elasticsearch
-kubectl apply -f manifests/elasticsearch/statefulset.yaml
-kubectl apply -f manifests/elasticsearch/service.yaml
-
-# Kibana
-kubectl apply -f manifests/kibana/deployment.yaml
-kubectl apply -f manifests/kibana/service.yaml
-
-# Prometheus
-kubectl apply -f manifests/prometheus/deployment.yaml
-kubectl apply -f manifests/prometheus/service.yaml
-
-# Loki
-kubectl apply -f manifests/loki/deployment.yaml
-kubectl apply -f manifests/loki/service.yaml
-
-# Promtail
-kubectl apply -f manifests/promtail/daemonset.yaml
-
-# Grafana
-kubectl apply -f manifests/grafana/deployment.yaml
-kubectl apply -f manifests/grafana/service.yaml
-```
-
-## Vault Operations
-
-### Unseal Vault (after restart)
-
-If Vault becomes sealed after a pod restart:
-
-```bash
-# Using the stored init data
-kubectl exec -n vault-stack vault-0 -- vault operator unseal <key-1>
-kubectl exec -n vault-stack vault-0 -- vault operator unseal <key-2>
-kubectl exec -n vault-stack vault-0 -- vault operator unseal <key-3>
-```
-
-Or use the unseal job (if you have persistent storage):
-
-```bash
-kubectl apply -f manifests/vault/init-job.yaml
-```
-
-### Check Vault Status
-
-```bash
-kubectl exec -n vault-stack vault-0 -- vault status
-```
-
-### Access Vault CLI
-
-```bash
-kubectl exec -it -n vault-stack vault-0 -- /bin/sh
-export VAULT_TOKEN=<your-root-token>
+source .env
 vault status
+vault secrets list
 ```
 
-## Monitoring
+### Service Credentials
 
-### Grafana Dashboards
+| Service | Username | Password |
+|---------|----------|----------|
+| Elasticsearch | `elastic` | `password123` |
+| Kibana | `elastic` | `password123` |
+| Grafana | `admin` | `admin` |
+| Redis | `vault-root-user` | `SuperSecretPass123` |
 
-Access Grafana at `http://<node-ip>:30300`
+Run `task info` to display all credentials.
 
-- **Username**: admin
-- **Password**: admin
+## Usage Examples
 
-Pre-configured data sources:
-- Prometheus (metrics)
-- Loki (logs)
-
-### Prometheus
-
-Access Prometheus at `http://<node-ip>:30909`
-
-Vault metrics are automatically scraped from `/v1/sys/metrics`
-
-### Kibana
-
-Access Kibana at `https://<node-ip>:30561`
-
-- **Username**: elastic
-- **Password**: password123
-
-**Note**: You'll need to accept the self-signed certificate warning in your browser.
-
-## Storage
-
-All data is persisted using PersistentVolumeClaims:
-
-- `vault-data-pvc`: Vault Raft storage (10Gi)
-- `vault-logs-pvc`: Vault audit logs (5Gi)
-- `redis-data-pvc`: Redis data (5Gi)
-- `elasticsearch-data-pvc`: Elasticsearch indices (20Gi)
-- `kibana-data-pvc`: Kibana data (5Gi)
-- `grafana-data-pvc`: Grafana dashboards (5Gi)
-- `prometheus-data-pvc`: Prometheus metrics (10Gi)
-- `loki-data-pvc`: Loki logs (10Gi)
-- `promtail-data-pvc`: Promtail positions (5Gi)
-
-## Security Considerations
-
-### Production Deployment
-
-For production use, consider:
-
-1. **Secrets Management**: Use Sealed Secrets or External Secrets Operator instead of plain Kubernetes secrets
-2. **TLS for Vault**: Enable TLS for Vault API
-3. **Network Policies**: Implement network policies to restrict pod-to-pod communication
-4. **RBAC**: Configure fine-grained RBAC policies
-5. **Storage Classes**: Use appropriate storage classes with encryption
-6. **Vault Auto-Unseal**: Configure auto-unseal using cloud KMS
-7. **High Availability**: Deploy multiple Vault replicas with Raft
-8. **Backup Strategy**: Implement regular backups of Vault data and Elasticsearch indices
-
-### Certificate Management
-
-The included certificates are self-signed and valid for 365 days. For production:
-- Use cert-manager to manage certificates
-- Use proper CA-signed certificates
-- Implement certificate rotation
-
-## Cleanup
-
-To remove all resources:
+### View Component Status
 
 ```bash
-./cleanup.sh
+task status
 ```
 
-**⚠️ WARNING**: This will delete all data including PVCs!
+Shows:
+- Pod status
+- Services
+- Vault status (initialized, sealed state)
+
+### View Service Logs
+
+```bash
+# View Vault logs
+task logs -- vault
+
+# View Elasticsearch logs
+task logs -- elasticsearch
+
+# View Kibana logs
+task logs -- kibana
+
+# Without service name, shows available services
+task logs
+```
+
+### Access Vault Shell
+
+```bash
+task shell
+```
+
+Opens an interactive shell inside the Vault pod.
+
+### Clean and Redeploy
+
+```bash
+# Destroy everything
+task clean    # or: task rm
+
+# Redeploy from scratch
+task up
+task init
+task unseal
+```
+
+## Configuration
+
+### Helm Values
+
+Customize the deployment by editing `helm-chart/vault-stack/values.yaml`:
+
+- Resource limits and requests
+- Replica counts
+- Storage sizes
+- Enable/disable components
+- **Change default passwords!**
+
+After making changes:
+
+```bash
+task clean
+task up
+```
+
+### Environment Variables
+
+The `.env` file is automatically created and updated during deployment:
+
+```bash
+# Vault address - required for Vault CLI commands
+export VAULT_ADDR=http://127.0.0.1:8200
+
+# Vault Enterprise license - required for Vault Enterprise features
+export VAULT_LICENSE=<your-license-here>
+
+# Vault root token - dynamically generated during 'task init'
+export VAULT_TOKEN=<auto-populated>
+```
+
+**Note**: Unseal key is stored only in `vault-init.json`, not in `.env`.
+
+## Architecture
+
+### Components
+
+- **Vault Enterprise** - Secret management with Raft storage backend
+- **Redis** - Database backend for Vault testing with ACL users
+- **Elasticsearch** - Log storage with TLS enabled
+- **Kibana** - Log visualization and exploration
+- **Prometheus** - Metrics collection and monitoring
+- **Grafana** - Unified observability dashboard
+- **Loki** - Log aggregation system
+- **Promtail** - Log collector for Kubernetes
+
+### TLS/Certificates
+
+TLS certificates are automatically generated for:
+- Elasticsearch (with CA, client, and server certs)
+- Kibana (with CA verification)
+- Fleet Server (for Vault integration)
+
+Certificates are valid for 365 days.
 
 ## Troubleshooting
 
-### Vault won't start
-
-Check logs:
-```bash
-kubectl logs -n vault-stack vault-0
-```
-
-### Elasticsearch won't start
-
-Ensure `vm.max_map_count` is set correctly on nodes:
-```bash
-# On each node
-sudo sysctl -w vm.max_map_count=262144
-```
-
-### Pod stuck in Pending
-
-Check PVC status:
-```bash
-kubectl get pvc -n vault-stack
-```
-
-Ensure your cluster has a default storage class:
-```bash
-kubectl get storageclass
-```
-
-### View all resources
+### Check Prerequisites
 
 ```bash
-kubectl get all -n vault-stack
+task pre-deploy-checks
 ```
 
-## Directory Structure
+### Pod Not Starting
+
+```bash
+# Check pod status
+task status
+
+# View pod logs
+task logs -- <pod-name>
+
+# Describe pod for events
+kubectl describe pod -n vault-stack <pod-name>
+```
+
+### Vault is Sealed After Restart
+
+Vault needs to be unsealed after pod restarts:
+
+```bash
+task unseal
+```
+
+Or manually:
+
+```bash
+kubectl exec -n vault-stack vault-0 -- vault status
+UNSEAL_KEY=$(cat vault-init.json | jq -r '.unseal_keys_b64[0]')
+kubectl exec -n vault-stack vault-0 -- vault operator unseal $UNSEAL_KEY
+```
+
+### Port-Forwards Not Responding
+
+Port-forwards are automatically set up. If needed, restart them:
+
+```bash
+# Kill existing port-forwards
+pkill -f "port-forward.*vault-stack"
+
+# Restart (this is done automatically by task up)
+NAMESPACE=vault-stack ./scripts/20_port_forwarding.sh
+```
+
+### Cannot Connect to Kubernetes Cluster
+
+```bash
+# Check cluster connection
+kubectl cluster-info
+
+# Check current context
+kubectl config current-context
+
+# List available contexts
+kubectl config get-contexts
+```
+
+## Security Notes
+
+⚠️ **This configuration is for development/testing purposes:**
+
+- Uses self-signed certificates
+- Default passwords in `values.yaml`
+- Single Vault unseal key (not recommended for production)
+- Secrets stored in Kubernetes secrets (base64 encoded)
+
+**For production deployments:**
+
+1. **Change all default passwords** in `helm-chart/vault-stack/values.yaml`
+2. **Use proper certificate management** (e.g., cert-manager)
+3. **Use Vault auto-unseal** with cloud KMS (AWS, Azure, GCP)
+4. **Implement 5 key shares with 3 threshold** for Vault unsealing
+5. **Enable Vault audit logging** to Elasticsearch or files
+6. **Use external secrets management** for Kubernetes secrets
+7. **Implement proper RBAC** for Kubernetes resources
+8. **Enable mTLS** for all service-to-service communication
+9. **Regular backups** of Vault data and Raft snapshots
+10. **Monitor and alert** on Vault seal status and metrics
+
+## Project Structure
 
 ```
 .
-├── manifests/
-│   ├── base/
-│   │   ├── namespace.yaml
-│   │   ├── persistent-volumes.yaml
-│   │   └── secrets.yaml
-│   ├── vault/
-│   │   ├── configmap.yaml
-│   │   ├── statefulset.yaml
-│   │   ├── service.yaml
-│   │   └── init-job.yaml
-│   ├── redis/
+├── Taskfile.yaml                    # Task automation definitions
+├── .env                            # Vault environment variables (auto-generated)
+├── vault-init.json                 # Vault initialization output (auto-generated)
+├── certs/                          # TLS certificates (auto-generated)
+│   ├── ca/
 │   ├── elasticsearch/
 │   ├── kibana/
-│   ├── grafana/
-│   ├── prometheus/
-│   ├── loki/
-│   └── promtail/
-├── scripts/
-│   ├── 00_create-certs.sh
-│   ├── create-k8s-secrets.sh
-│   ├── vault-init.sh
-│   └── vault-unseal.sh
-├── deploy.sh
-├── cleanup.sh
-└── README.md
+│   └── fleet-server/
+├── helm-chart/
+│   └── vault-stack/
+│       ├── Chart.yaml              # Helm chart metadata
+│       ├── values.yaml             # Configuration values
+│       └── templates/              # Kubernetes manifests
+└── scripts/
+    ├── lib/
+    │   └── colors.sh              # Centralized color configuration
+    ├── tools/
+    │   ├── destroy.sh             # Stack cleanup
+    │   ├── info.sh                # Access information display
+    │   ├── logs.sh                # Service logs viewer
+    │   ├── pre-deploy-checks.sh   # Pre-deployment validation
+    │   └── status.sh              # Component status display
+    ├── 00_create-certs.sh         # Certificate generation
+    ├── 01_secrets_from_certs.sh   # Create Kubernetes secrets
+    ├── 10_deploy_helm.sh          # Helm deployment
+    ├── 20_port_forwarding.sh      # Port-forwarding setup
+    ├── 30_vault_init.sh           # Vault initialization
+    └── 40_vault_unseal.sh         # Vault unsealing
 ```
 
-## Differences from Podman Stack
+## Development
 
-Key changes from the original Podman stack:
-- No Fleet Server or Elastic Agents (as requested)
-- Uses Kubernetes native resources (Deployments, StatefulSets, Services)
-- PersistentVolumeClaims for storage instead of named volumes
-- ConfigMaps and Secrets for configuration
-- NodePort services for external access
-- DaemonSet for Promtail instead of sidecar containers
-- Kubernetes Jobs for Vault initialization
+### Adding New Services
 
-## Contributing
+1. Add service definition to `helm-chart/vault-stack/templates/`
+2. Update `values.yaml` with configuration
+3. Add port-forward in `scripts/20_port_forwarding.sh`
+4. Update `task info` in `scripts/tools/info.sh`
 
-Issues and pull requests are welcome!
+### Modifying Colors
+
+All scripts use centralized colors from `scripts/lib/colors.sh`:
+
+```bash
+GREEN='\033[0;32m'    # Success messages
+YELLOW='\033[1;33m'   # Warnings
+BLUE='\033[0;34m'     # Informational messages
+NC='\033[0m'          # No Color
+```
 
 ## License
 
-This project is provided as-is for demonstration purposes.
+This stack deploys Vault Enterprise which requires a valid license.
+
+- Obtain a trial license from [HashiCorp](https://www.hashicorp.com/products/vault/trial)
+- Add your license to the `.env` file under `VAULT_LICENSE`
+
+## Support
+
+For issues and questions:
+- Review the [Troubleshooting](#troubleshooting) section
+- Check component logs: `task logs -- <service-name>`
+- Verify cluster status: `task status`
+
+## Related Projects
+
+- Original Podman version: [podman-vault-stack](https://github.com/patelajk2319-hcp/podman-vault-stack)

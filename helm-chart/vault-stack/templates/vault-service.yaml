@@ -1,0 +1,22 @@
+{{- if .Values.vault.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: vault
+spec:
+  type: {{ .Values.vault.service.type }}
+  selector:
+    app: vault
+  ports:
+  - name: http
+    port: {{ .Values.vault.service.port }}
+    targetPort: 8200
+    protocol: TCP
+  - name: cluster
+    port: {{ .Values.vault.service.clusterPort }}
+    targetPort: 8201
+    protocol: TCP
+{{- end }}
