@@ -12,8 +12,8 @@ pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 
 echo -e "${BLUE}Setting up port-forwards in background${NC}"
 
-# Vault - using the UI service for official chart
-nohup kubectl port-forward -n "$NAMESPACE" svc/vault-stack-ui 8200:8200 > /dev/null 2>&1 &
+# Vault - using NodePort service created by Terraform
+nohup kubectl port-forward -n "$NAMESPACE" svc/vault-nodeport 8200:8200 > /dev/null 2>&1 &
 
 # Elasticsearch - ECK creates elasticsearch-es-http service
 nohup kubectl port-forward -n "$NAMESPACE" svc/elasticsearch-es-http 9200:9200 > /dev/null 2>&1 &
@@ -28,4 +28,4 @@ nohup kubectl port-forward -n "$NAMESPACE" svc/vault-stack-grafana 3000:80 > /de
 nohup kubectl port-forward -n "$NAMESPACE" svc/vault-stack-prometheus-server 9090:80 > /dev/null 2>&1 &
 
 sleep 2
-echo -e "${GREEN}Port-forwards active in background${NC}"
+echo -e "${GREEN}Port-forwards active...${NC}"

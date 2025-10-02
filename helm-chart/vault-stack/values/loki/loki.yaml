@@ -33,6 +33,12 @@ loki:
         memory: 512Mi
         cpu: 500m
 
+  # Reduce cache memory for local development
+  chunksCache:
+    allocatedMemory: 1024  # 1GB instead of default 9.8GB
+  resultsCache:
+    allocatedMemory: 512   # 512MB instead of default 1.2GB
+
   # Disable other modes
   read:
     replicas: 0

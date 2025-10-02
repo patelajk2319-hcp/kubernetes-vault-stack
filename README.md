@@ -10,7 +10,7 @@ This stack deploys a complete Vault Enterprise environment on Kubernetes with:
 
 - Kubernetes cluster (1.20+)
 - `kubectl` configured and connected to the cluster
-- `helm` 3.x
+- `terraform` (>= 1.5.0) - Infrastructure as Code
 - `task` (Task runner)
 - `jq` (JSON processor)
 - Vault Enterprise license (add to `licenses/vault-enterprise/license.lic`)
@@ -38,38 +38,40 @@ cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/licen
 
 ⚠️ **Important**: License files (`*.lic`) are in `.gitignore` to prevent accidentally committing your license keys. Only `.example` files are tracked.
 
-### 3. Deploy the Stack
+### 3. Deploy Everything (Automated)
 
 ```bash
-task up
+task up        # Deploy infrastructure
+task init      # Initialize Vault
+task unseal    # Unseal Vault and start port forwarding
 ```
 
-This command will:
-- Check prerequisites (including Vault license)
-- Create `.env` file with configuration from license file
-- Build Helm chart dependencies (official Vault, ECK, Grafana, Prometheus, Loki charts)
-- Create TLS certificates for Elasticsearch and Kibana (Signed by local CA)
-- Deploy Helm chart with all components
-- Deploy Elasticsearch and Kibana via ECK operator
-- Set up port-forwarding automatically
+That's it! These three commands:
+- ✅ Deploy all infrastructure (Terraform)
+- ✅ Generate TLS certificates
+- ✅ Create Kubernetes secrets
+- ✅ Deploy Helm charts (Vault, ELK, Grafana, Prometheus, Loki)
+- ✅ Initialize Vault
+- ✅ Unseal Vault
+- ✅ Set up port forwarding automatically
+- ✅ Update `.env` with Vault token
 
-### 4. Initialize Vault
+Services are now accessible at:
+- **Vault**: http://localhost:8200
+- **Grafana**: http://localhost:3000
+- **Prometheus**: http://localhost:9090
+- **Kibana**: https://localhost:5601
+- **Elasticsearch**: https://localhost:9200
+
+### 4. Use Vault CLI
 
 ```bash
-task init
+source .env
+vault status
+vault secrets list
 ```
 
-This generates:
-- Root token (saved to `.env`)
-- Unseal key (saved to `vault-init.json`)
-
-### 5. Unseal Vault
-
-```bash
-task unseal
-```
-
-### 6. View Access Information
+### 5. View Access Information
 
 ```bash
 task info
@@ -79,22 +81,20 @@ task info
 
 ```bash
 task              # List all available commands
-task up           # Deploy the entire stack
+task up           # Deploy the entire stack (Terraform)
 task init         # Initialize Vault
-task unseal       # Unseal Vault
+task unseal       # Unseal Vault and start port forwarding
 task status       # Show status of all components
 task info         # Show access information and credentials
 task logs         # View logs for a service (usage: task logs -- <service-name>)
 task shell        # Open a shell in the Vault pod
-task clean        # Destroy the entire stack
+task clean        # Destroy the entire stack (Terraform)
 task rm           # Alias for clean
 ```
 
 ## Accessing Services
 
-Port-forwarding is automatically configured during `task up`. 
-
-Services are available at:
+After running `task unseal`, port forwarding is automatically set up and services are available at:
 
 - **Vault UI**: http://localhost:8200/ui
 - **Vault CLI**: `source .env && vault status`
@@ -188,6 +188,27 @@ task unseal
 
 ## Configuration
 
+### Terraform Variables
+
+Infrastructure configuration is managed via Terraform variables in `terraform/variables.tf`:
+
+```hcl
+namespace              = "vault-stack"           # Kubernetes namespace
+release_name           = "vault-stack"           # Helm release name
+chart_path             = "../helm-chart/vault-stack"
+vault_license_file     = "../licenses/vault-enterprise/license.lic"
+cert_validity_hours    = 8760                    # Certificate validity (1 year)
+```
+
+To customize, create a `terraform.tfvars` file:
+
+```hcl
+namespace = "my-vault"
+cert_validity_hours = 17520  # 2 years
+```
+
+See `terraform/README.md` for full documentation.
+
 ### Helm Values
 
 The deployment uses a modular values structure in `helm-chart/vault-stack/values/`:
@@ -219,7 +240,7 @@ task up
 
 ### Environment Variables
 
-The `.env` file is automatically created during `task up` and contains:
+The `.env` file is automatically created by Terraform during `task up` and contains:
 
 ```bash
 # Vault address - required for Vault CLI commands
@@ -233,10 +254,11 @@ export VAULT_TOKEN=<auto-populated-during-init>
 ```
 
 **Note**:
-- The `.env` file is automatically created - you don't need to create it manually
-- Vault license is automatically read from `licenses/vault-enterprise/license.lic` during `task up`
-- Vault root token is generated and added to `.env` during `task init`
+- The `.env` file is automatically created by Terraform - you don't need to create it manually
+- Vault license is automatically read from `licenses/vault-enterprise/license.lic` and embedded in `.env`
+- Vault root token is generated and updated in `.env` during `task init`
 - Unseal key is stored only in `vault-init.json`, not in `.env`
+- The `.env` file is destroyed when running `task clean`
 
 ## Architecture
 
@@ -254,12 +276,13 @@ All components use official Helm charts from vendors:
 
 ### TLS/Certificates
 
-TLS certificates are automatically generated for:
-- Elasticsearch (with CA, client, and server certs)
-- Kibana (with CA verification)
-- Fleet Server (for Vault integration)
+TLS certificates are automatically generated by Terraform using the `tls` provider:
+- Self-signed CA certificate
+- Vault server certificate (signed by CA)
+- Elasticsearch certificates (using same CA)
+- Kibana certificates (with CA verification)
 
-Certificates are valid for 365 days.
+Certificates are valid for 1 year (8760 hours) by default. Customize with `cert_validity_hours` variable.
 
 ## Troubleshooting
 
@@ -300,14 +323,10 @@ kubectl exec -n vault-stack vault-0 -- vault operator unseal $UNSEAL_KEY
 
 ### Port-Forwards Not Responding
 
-Port-forwards are automatically set up. If needed, restart them:
+If port-forwards stop working, restart them:
 
 ```bash
-# Kill existing port-forwards
-pkill -f "port-forward.*vault-stack"
-
-# Restart (this is done automatically by task up)
-NAMESPACE=vault-stack ./scripts/20_port_forwarding.sh
+./scripts/20_port_forwarding.sh
 ```
 
 ### Cannot Connect to Kubernetes Cluster
@@ -323,12 +342,57 @@ kubectl config current-context
 kubectl config get-contexts
 ```
 
+## Infrastructure as Code
+
+This project uses **Terraform** to manage all Kubernetes infrastructure:
+
+- **Namespace** creation
+- **TLS certificate** generation
+- **Kubernetes secrets** (certificates, license)
+- **Helm chart** deployments
+- **ECK operator** deployment
+
+### Why Terraform?
+
+- **Declarative** - Define desired state, Terraform handles the rest
+- **State management** - Track infrastructure changes over time
+- **Idempotent** - Safe to run multiple times
+- **Version controlled** - Infrastructure changes in git
+- **Modular** - Reusable modules for certificates, secrets, Helm releases
+
+### Terraform Structure
+
+```
+terraform/
+├── main.tf              # Main configuration
+├── variables.tf         # Input variables
+├── outputs.tf           # Output values
+├── providers.tf         # Provider configuration
+├── modules/
+│   ├── certificates/    # TLS certificate generation
+│   ├── secrets/         # Kubernetes secrets
+│   └── helm-releases/   # Helm chart deployments
+└── README.md            # Terraform documentation
+```
+
+See `terraform/README.md` for detailed Terraform documentation.
+
+### Remaining Shell Scripts
+
+A few shell scripts remain for operational tasks (not infrastructure):
+- Vault init (`30_vault_init.sh`) - One-time initialization
+- Vault unseal (`40_vault_unseal.sh`) - Runtime unsealing
+- Status and info commands (`tools/status.sh`, `tools/info.sh`) - Information display
+
+These cannot be replaced with Terraform as they are runtime operations, not infrastructure provisioning.
+
 ## Development
 
 ### Adding New Services
 
 1. Add official Helm chart dependency to `helm-chart/vault-stack/Chart.yaml`
 2. Create new values file in `helm-chart/vault-stack/values/<service>/<service>.yaml`
-3. Add values file to `scripts/10_deploy_helm.sh` helm install/upgrade command
-4. Add port-forward in `scripts/20_port_forwarding.sh` if needed
-5. Update `task info` in `scripts/tools/info.sh` if needed
+3. Update Terraform module in `terraform/modules/helm-releases/main.tf` to include new values file
+4. Add NodePort service in `terraform/main.tf` if external access needed
+5. Update `task port-forward` in `Taskfile.yaml` if using port forwarding
+6. Update `task info` in `scripts/tools/info.sh` for credential display

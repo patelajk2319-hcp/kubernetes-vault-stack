@@ -7,19 +7,18 @@ vars:
   VAULT_POD: vault-0
 
 tasks:
-  # Main deployment command
+  # Main deployment command (Terraform)
   up:
-    desc: Deploy the entire Vault stack
+    desc: Deploy the entire Vault stack using Terraform
     deps:
       - pre-deploy-checks
+    dir: terraform
     cmds:
-      - ./scripts/00_create-certs.sh
-      - NAMESPACE={{.NAMESPACE}} ./scripts/01_secrets_from_certs.sh
-      - NAMESPACE={{.NAMESPACE}} ./scripts/02_create_env.sh
-      - NAMESPACE={{.NAMESPACE}} RELEASE_NAME={{.RELEASE_NAME}} CHART_PATH={{.CHART_PATH}} ./scripts/10_deploy_helm.sh
-      - NAMESPACE={{.NAMESPACE}} ./scripts/11_deploy_elk.sh
-      - NAMESPACE={{.NAMESPACE}} ./scripts/20_port_forwarding.sh
+      - terraform init
+      - terraform apply -auto-approve
       - echo "Stack deployed successfully!"
+      - echo ""
+      - echo "Run 'task port-forward' to set up port forwarding to localhost"
 
   # Initialise Vault
   init:
@@ -29,16 +28,17 @@ tasks:
 
   # Unseal Vault
   unseal:
-    desc: Unseal Vault
+    desc: Unseal Vault and set up port forwarding
     cmds:
       - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/40_vault_unseal.sh
+      - NAMESPACE={{.NAMESPACE}} ./scripts/20_port_forwarding.sh
 
-  # Clean/destroy everything
+  # Clean/destroy everything (Terraform)
   clean:
-    desc: Destroy the entire stack
+    desc: Destroy the entire stack using Terraform
     aliases: [rm]
     cmds:
-      - NAMESPACE={{.NAMESPACE}} RELEASE_NAME={{.RELEASE_NAME}} ./scripts/tools/destroy.sh
+      - NAMESPACE={{.NAMESPACE}} ./scripts/tools/destroy.sh
 
   # Show status of all components
   status:
