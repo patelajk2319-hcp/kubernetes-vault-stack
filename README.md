@@ -36,8 +36,6 @@ cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/licen
 # Replace YOUR_VAULT_ENTERPRISE_LICENSE_KEY_HERE with your actual license
 ```
 
-⚠️ **Important**: License files (`*.lic`) are in `.gitignore` to prevent accidentally committing your license keys. Only `.example` files are tracked.
-
 ### 3. Deploy Everything (Automated)
 
 ```bash
