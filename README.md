@@ -1,4 +1,7 @@
 
+> **⚠️ Development and Testing Only**
+> This stack is designed for development and testing purposes. Do not use in production environments.
+
 ## Overview
 
 This stack deploys a complete Vault Enterprise environment on Kubernetes with:
@@ -120,7 +123,7 @@ source .env
 echo $ELASTICSEARCH_PASSWORD
 ```
 
-⚠️ **Important**: Change Grafana default credentials before deploying to production!
+**Note**: Default credentials are set for development convenience.
 
 ## Usage Examples
 
@@ -306,20 +309,14 @@ kubectl config get-contexts
 
 ## Security Notes
 
-⚠️ **This configuration is for development/testing purposes:**
+⚠️ **This stack is designed for development and testing purposes only. Do not use in production.**
 
+Development/testing configuration:
 - Uses self-signed certificates for Elasticsearch/Kibana
 - Vault TLS is disabled (listening on HTTP only)
-- Single Vault unseal key (not recommended for production)
+- Single Vault unseal key for convenience
 - Default Grafana credentials are hardcoded
-
-**For production deployments:**
-1. Enable TLS for Vault
-2. Use multiple unseal keys with key sharding
-3. Store Vault Enterprise license in a proper secret management system
-4. Use cert-manager for certificate management
-5. Change all default credentials
-6. Use external secret management (AWS Secrets Manager, Azure Key Vault, etc.)
+- Port-forwarding for local access
 
 ## Development
 
