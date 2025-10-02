@@ -39,5 +39,13 @@ else
   echo -e "${YELLOW}No certs directory found (nothing to remove)${NC}"
 fi
 
+# Remove .env file if it exists
+if [ -f .env ]; then
+  rm -f .env
+  echo -e "${GREEN}Removed .env file${NC}"
+else
+  echo -e "${YELLOW}No .env file found (nothing to remove)${NC}"
+fi
+
 # Final message
 echo -e "${GREEN}Stack destroyed${NC}"
