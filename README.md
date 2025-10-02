@@ -9,9 +9,9 @@ This stack deploys a complete Vault Enterprise environment on Kubernetes with:
 ## Prerequisites
 
 - Kubernetes cluster (1.20+)
-- `kubectl` configured and connected to cluster
+- `kubectl` configured and connected to the cluster
 - `helm` 3.x
-- `task` (Task runner) - [Installation](https://taskfile.dev/installation/)
+- `task` (Task runner)
 - `jq` (JSON processor)
 - Vault Enterprise license (add to `.env` file)
 
@@ -33,7 +33,7 @@ task up
 This command will:
 - Check prerequisites
 - Build Helm chart dependencies (official Vault, ECK, Grafana, Prometheus, Loki charts)
-- Create TLS certificates for Elasticsearch and Kibana
+- Create TLS certificates for Elasticsearch and Kibana (Signed by local CA)
 - Deploy Helm chart with all components
 - Deploy Elasticsearch and Kibana via ECK operator
 - Set up port-forwarding automatically
@@ -77,7 +77,9 @@ task rm           # Alias for clean
 
 ## Accessing Services
 
-Port-forwarding is automatically configured during `task up`. Services are available at:
+Port-forwarding is automatically configured during `task up`. 
+
+Services are available at:
 
 - **Vault UI**: http://localhost:8200/ui
 - **Vault CLI**: `source .env && vault status`
@@ -302,17 +304,6 @@ kubectl config current-context
 # List available contexts
 kubectl config get-contexts
 ```
-
-## Security Notes
-
-⚠️ **This stack is designed for development and testing purposes only. Do not use in production.**
-
-Development/testing configuration:
-- Uses self-signed certificates for Elasticsearch/Kibana
-- Vault TLS is disabled (listening on HTTP only)
-- Single Vault unseal key for convenience
-- Default Grafana credentials are hardcoded
-- Port-forwarding for local access
 
 ## Development
 
