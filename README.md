@@ -1,7 +1,3 @@
-
-> **⚠️ Development and Testing Only**
-> This stack is designed for development and testing purposes. Do not use in production environments.
-
 ## Overview
 
 This stack deploys a complete Vault Enterprise environment on Kubernetes with:
@@ -327,8 +323,3 @@ Development/testing configuration:
 3. Add values file to `scripts/10_deploy_helm.sh` helm install/upgrade command
 4. Add port-forward in `scripts/20_port_forwarding.sh` if needed
 5. Update `task info` in `scripts/tools/info.sh` if needed
-
-
-## Related Projects
-
-- Original Podman version: [podman-vault-stack](https://github.com/patelajk2319-hcp/podman-vault-stack)
