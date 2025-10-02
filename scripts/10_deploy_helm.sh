@@ -53,4 +53,10 @@ echo -e "${BLUE}Services${NC}"
 kubectl get svc -n "$NAMESPACE"
 echo ""
 echo -e "${BLUE}Vault Status${NC}"
-kubectl exec -n "$NAMESPACE" vault-0 -- vault status || echo -e "${YELLOW}Vault not ready yet${NC}"
+# Auto-detect Vault pod name
+VAULT_POD=$(kubectl get pods -n "$NAMESPACE" -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+if [ -n "$VAULT_POD" ]; then
+  kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- vault status || echo -e "${YELLOW}Vault not ready yet${NC}"
+else
+  echo -e "${YELLOW}Vault pod not found${NC}"
+fi

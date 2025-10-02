@@ -11,6 +11,17 @@ source "$(dirname "$0")/lib/colors.sh"
 NAMESPACE="${NAMESPACE:-vault-stack}"
 VAULT_POD="${VAULT_POD:-vault-0}"
 
+# Auto-detect Vault pod name if default doesn't exist
+if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then
+  echo -e "${YELLOW}Pod $VAULT_POD not found, auto-detecting Vault pod...${NC}"
+  VAULT_POD=$(kubectl get pods -n "$NAMESPACE" -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  if [ -z "$VAULT_POD" ]; then
+    echo -e "${RED}Error: No Vault pod found in namespace $NAMESPACE${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}Found Vault pod: $VAULT_POD${NC}"
+fi
+
 # Check if Vault is initialized
 if [ ! -f vault-init.json ]; then
   echo -e "${YELLOW}vault-init.json not found${NC}"
