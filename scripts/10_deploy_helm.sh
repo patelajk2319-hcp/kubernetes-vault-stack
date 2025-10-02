@@ -11,42 +11,34 @@ CHART_PATH="${CHART_PATH:-./helm-chart/vault-stack}"
 
 echo -e "${BLUE}Deploying Helm chart${NC}"
 
-# Build chart dependencies first
-echo -e "${BLUE}Building chart dependencies${NC}"
-helm dependency build "$CHART_PATH"
+# Add required Helm repositories
+echo -e "${BLUE}Adding Helm repositories${NC}"
+helm repo add hashicorp https://helm.releases.hashicorp.com 2>/dev/null || true
+helm repo add bitnami https://charts.bitnami.com/bitnami 2>/dev/null || true
+helm repo add elastic https://helm.elastic.co 2>/dev/null || true
+helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+helm repo update
+
+# Build chart dependencies
+echo -e "${BLUE}Building chart dependencies (downloading official charts)${NC}"
+helm dependency update "$CHART_PATH"
 
 # Create namespace if it doesn't exist
 kubectl create namespace "$NAMESPACE" 2>/dev/null || true
 
-# Define values files in order (later files override earlier ones)
-VALUES_FILES=(
-  "$CHART_PATH/values/common/common.yaml"
-  "$CHART_PATH/values/vault/vault.yaml"
-  "$CHART_PATH/values/elasticsearch/elasticsearch.yaml"
-  "$CHART_PATH/values/kibana/kibana.yaml"
-  "$CHART_PATH/values/redis/redis.yaml"
-  "$CHART_PATH/values/prometheus/prometheus.yaml"
-  "$CHART_PATH/values/grafana/grafana.yaml"
-  "$CHART_PATH/values/loki/loki.yaml"
-  "$CHART_PATH/values/promtail/promtail.yaml"
-  "$CHART_PATH/values/secrets/secrets.yaml"
-)
-
-# Build values file arguments
-VALUES_ARGS=""
-for values_file in "${VALUES_FILES[@]}"; do
-  if [ -f "$values_file" ]; then
-    VALUES_ARGS="$VALUES_ARGS -f $values_file"
-  fi
-done
-
 # Check if release exists and upgrade or install
+# Note: Using the main values.yaml file which configures all dependencies
 if helm list -n "$NAMESPACE" 2>/dev/null | grep -q "$RELEASE_NAME"; then
   echo -e "${YELLOW}Upgrading existing release${NC}"
-  helm upgrade "$RELEASE_NAME" "$CHART_PATH" -n "$NAMESPACE" $VALUES_ARGS
+  helm upgrade "$RELEASE_NAME" "$CHART_PATH" \
+    -n "$NAMESPACE" \
+    -f "$CHART_PATH/values.yaml"
 else
   echo -e "${BLUE}Installing new release${NC}"
-  helm install "$RELEASE_NAME" "$CHART_PATH" -n "$NAMESPACE" $VALUES_ARGS
+  helm install "$RELEASE_NAME" "$CHART_PATH" \
+    -n "$NAMESPACE" \
+    -f "$CHART_PATH/values.yaml"
 fi
 
 echo ""
