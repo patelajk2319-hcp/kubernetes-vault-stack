@@ -22,13 +22,6 @@ dependencies:
     condition: vault.enabled
     alias: vault
 
-  # Bitnami Redis
-  - name: redis
-    version: "22.0.7"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: redis.enabled
-    alias: redis
-
   # Elastic Cloud on Kubernetes (ECK) Operator
   - name: eck-operator
     version: "2.10.0"

@@ -2,9 +2,6 @@ dependencies:
 - name: vault
   repository: https://helm.releases.hashicorp.com
   version: 0.31.0
-- name: redis
-  repository: https://charts.bitnami.com/bitnami
-  version: 22.0.7
 - name: eck-operator
   repository: https://helm.elastic.co
   version: 2.10.0
@@ -20,5 +17,5 @@ dependencies:
 - name: promtail
   repository: https://grafana.github.io/helm-charts
   version: 6.16.6
-digest: sha256:a595e42efd5c5ba1d46bc75309a591446de82277f27b57246c397b626b65c2ca
-generated: "2025-10-02T08:41:37.581697+01:00"
+digest: sha256:f27bbc3049b8b25374ade9b556540c1034eaec2ffda6ac2da621bfdff06b29d3
+generated: "2025-10-02T09:43:32.682194+01:00"
