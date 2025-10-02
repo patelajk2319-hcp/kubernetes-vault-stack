@@ -13,7 +13,7 @@ This stack deploys a complete Vault Enterprise environment on Kubernetes with:
 - `helm` 3.x
 - `task` (Task runner)
 - `jq` (JSON processor)
-- Vault Enterprise license (add to `.env` file)
+- Vault Enterprise license (add to `licenses/vault-enterprise/license.lic`)
 
 ## Quick Start
 
@@ -24,21 +24,36 @@ git clone <repository-url>
 cd kubernetes-vault-stack
 ```
 
-### 2. Deploy the Stack
+### 2. Configure Vault License
+
+Add your Vault Enterprise license:
+
+```bash
+# Copy the license template
+cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/license.lic
+
+# Edit the license file and add your actual license key
+# Replace YOUR_VAULT_ENTERPRISE_LICENSE_KEY_HERE with your actual license
+```
+
+⚠️ **Important**: License files (`*.lic`) are in `.gitignore` to prevent accidentally committing your license keys. Only `.example` files are tracked.
+
+### 3. Deploy the Stack
 
 ```bash
 task up
 ```
 
 This command will:
-- Check prerequisites
+- Check prerequisites (including Vault license)
+- Create `.env` file with configuration from license file
 - Build Helm chart dependencies (official Vault, ECK, Grafana, Prometheus, Loki charts)
 - Create TLS certificates for Elasticsearch and Kibana (Signed by local CA)
 - Deploy Helm chart with all components
 - Deploy Elasticsearch and Kibana via ECK operator
 - Set up port-forwarding automatically
 
-### 3. Initialize Vault
+### 4. Initialize Vault
 
 ```bash
 task init
@@ -48,13 +63,13 @@ This generates:
 - Root token (saved to `.env`)
 - Unseal key (saved to `vault-init.json`)
 
-### 4. Unseal Vault
+### 5. Unseal Vault
 
 ```bash
 task unseal
 ```
 
-### 5. View Access Information
+### 6. View Access Information
 
 ```bash
 task info
@@ -205,20 +220,24 @@ task up
 
 ### Environment Variables
 
-The `.env` file is automatically created and updated during deployment:
+The `.env` file is automatically created during `task up` and contains:
 
 ```bash
 # Vault address - required for Vault CLI commands
 export VAULT_ADDR=http://127.0.0.1:8200
 
-# Vault Enterprise license - required for Vault Enterprise features
-export VAULT_LICENSE=<your-license-here>
+# Vault Enterprise license - read from licenses/vault-enterprise/license.lic
+export VAULT_LICENSE=<auto-populated-from-license-file>
 
 # Vault root token - dynamically generated during 'task init'
-export VAULT_TOKEN=<auto-populated>
+export VAULT_TOKEN=<auto-populated-during-init>
 ```
 
-**Note**: Unseal key is stored only in `vault-init.json`, not in `.env`.
+**Note**:
+- The `.env` file is automatically created - you don't need to create it manually
+- Vault license is automatically read from `licenses/vault-enterprise/license.lic` during `task up`
+- Vault root token is generated and added to `.env` during `task init`
+- Unseal key is stored only in `vault-init.json`, not in `.env`
 
 ## Architecture
 

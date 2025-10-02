@@ -9,6 +9,11 @@ NAMESPACE="${NAMESPACE:-vault-stack}"
 RELEASE_NAME="${RELEASE_NAME:-vault-stack}"
 CHART_PATH="${CHART_PATH:-./helm-chart/vault-stack}"
 
+# Read Vault license from file (already validated in pre-deploy-checks)
+LICENSE_FILE="licenses/vault-enterprise/license.lic"
+VAULT_LICENSE=$(cat "$LICENSE_FILE" | tr -d '[:space:]')
+VAULT_LICENSE_B64=$(echo -n "$VAULT_LICENSE" | base64)
+
 echo -e "${BLUE}Deploying Helm chart${NC}"
 
 # Add required Helm repositories
@@ -49,6 +54,7 @@ fi
 
 # Check if release exists and upgrade or install
 # Note: Using separate values files for each service
+# License is passed via --set to avoid storing it in values files
 if helm list -n "$NAMESPACE" 2>/dev/null | grep -q "$RELEASE_NAME"; then
   echo -e "${YELLOW}Upgrading existing release${NC}"
   helm upgrade "$RELEASE_NAME" "$CHART_PATH" \
@@ -59,7 +65,8 @@ if helm list -n "$NAMESPACE" 2>/dev/null | grep -q "$RELEASE_NAME"; then
     -f "$CHART_PATH/values/grafana/grafana.yaml" \
     -f "$CHART_PATH/values/prometheus/prometheus.yaml" \
     -f "$CHART_PATH/values/loki/loki.yaml" \
-    -f "$CHART_PATH/values/promtail/promtail.yaml"
+    -f "$CHART_PATH/values/promtail/promtail.yaml" \
+    --set secrets.vault.license="$VAULT_LICENSE_B64"
 else
   echo -e "${BLUE}Installing new release${NC}"
   helm install "$RELEASE_NAME" "$CHART_PATH" \
@@ -70,7 +77,8 @@ else
     -f "$CHART_PATH/values/grafana/grafana.yaml" \
     -f "$CHART_PATH/values/prometheus/prometheus.yaml" \
     -f "$CHART_PATH/values/loki/loki.yaml" \
-    -f "$CHART_PATH/values/promtail/promtail.yaml"
+    -f "$CHART_PATH/values/promtail/promtail.yaml" \
+    --set secrets.vault.license="$VAULT_LICENSE_B64"
 fi
 
 echo ""

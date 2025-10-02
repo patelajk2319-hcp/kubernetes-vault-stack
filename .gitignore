@@ -33,3 +33,6 @@ vault-init.json
 .claude
 !.gitignore
 !.github/
+
+# License files
+*.lic

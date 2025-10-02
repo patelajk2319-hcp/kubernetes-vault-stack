@@ -14,10 +14,9 @@ echo "---------"
 echo "Vault UI:         http://localhost:8200/ui"
 echo "Vault CLI:        source .env && vault status"
 echo "Elasticsearch:    https://localhost:9200"
-echo "Kibana:           https://localhost:5601"
+echo "Kibana:           http://localhost:5601"
 echo "Grafana:          http://localhost:3000"
 echo "Prometheus:       http://localhost:9090"
-echo "Redis:            localhost:6379"
 echo ""
 echo -e "${BLUE}Credentials:${NC}"
 echo "------------"
@@ -27,10 +26,17 @@ if [ -f vault-init.json ]; then
 else
   echo -e "${YELLOW}Vault:            Run 'task init' first${NC}"
 fi
-echo "Elasticsearch:    elastic / password123"
-echo "Kibana:           elastic / password123"
+# Get Elasticsearch password from Kubernetes secret
+NAMESPACE="${NAMESPACE:-vault-stack}"
+ES_PASSWORD=$(kubectl get secret elasticsearch-es-elastic-user -n "$NAMESPACE" -o jsonpath='{.data.elastic}' 2>/dev/null | base64 -d)
+if [ -n "$ES_PASSWORD" ]; then
+  echo -e "${GREEN}Elasticsearch:    elastic / $ES_PASSWORD${NC}"
+  echo -e "${GREEN}Kibana:           elastic / $ES_PASSWORD${NC}"
+else
+  echo -e "${YELLOW}Elasticsearch:    Run 'task up' first${NC}"
+  echo -e "${YELLOW}Kibana:           Run 'task up' first${NC}"
+fi
 echo "Grafana:          admin / admin"
-echo "Redis:            vault-root-user / SuperSecretPass123"
 echo ""
 echo -e "${BLUE}Note:${NC}"
 echo "-----"
