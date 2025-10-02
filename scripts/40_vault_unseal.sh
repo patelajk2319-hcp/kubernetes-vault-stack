@@ -22,14 +22,14 @@ if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then
   echo -e "${GREEN}Found Vault pod: $VAULT_POD${NC}"
 fi
 
-# Check if Vault is initialized
+# Check if Vault is initialised
 if [ ! -f vault-init.json ]; then
   echo -e "${YELLOW}vault-init.json not found${NC}"
   echo "Run 'task init' first to initialize Vault"
   exit 1
 fi
 
-echo -e "${BLUE}Vault initialization file found${NC}"
+echo -e "${BLUE}Vault initialisation file found${NC}"
 
 # Unseal Vault
 UNSEAL_KEY=$(cat vault-init.json | jq -r '.unseal_keys_b64[0]')

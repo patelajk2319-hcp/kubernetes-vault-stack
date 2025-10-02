@@ -35,14 +35,14 @@ if [ "$INITIALIZED" = "true" ]; then
 fi
 
 # Initialize Vault with single key
-echo -e "${BLUE}Initializing Vault${NC}"
+echo -e "${BLUE}Initialising Vault${NC}"
 kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- \
   vault operator init \
   -key-shares=1 \
   -key-threshold=1 \
   -format=json > vault-init.json
 
-echo -e "${GREEN}Vault initialized${NC}"
+echo -e "${GREEN}Vault Token and Key${NC}"
 cat vault-init.json | jq -r '"Root Token: " + .root_token'
 cat vault-init.json | jq -r '"Unseal Key: " + .unseal_keys_b64[0]'
 
