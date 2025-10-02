@@ -1,65 +1,83 @@
-# Vault configuration
+# Vault configuration for official HashiCorp Helm chart
 vault:
   enabled: true
-  image:
-    repository: docker.io/hashicorp/vault-enterprise
-    tag: "1.20-ent"
-    pullPolicy: IfNotPresent
 
-  replicas: 1
-
-  config:
-    ui: true
-    disableMlock: true
-    defaultLeaseTtl: "1h"
-    maxLeaseTtl: "24h"
-    apiAddr: "http://vault:8200"
-    clusterAddr: "http://vault:8201"
-    logLevel: "info"
-
-  raft:
+  global:
     enabled: true
-    path: "/vault/file"
-    nodeId: "vault-0"
+    namespace: vault-stack
 
-  listener:
-    address: "0.0.0.0:8200"
-    tlsDisable: true
+  server:
+    enabled: true
+    image:
+      repository: "hashicorp/vault-enterprise"
+      tag: "1.20-ent"
+      pullPolicy: IfNotPresent
 
-  telemetry:
-    disableHostname: true
-    prometheusRetentionTime: "12h"
-    unauthenticatedMetricsAccess: true
+    # Vault Enterprise license
+    enterpriseLicense:
+      secretName: vault-license
+      secretKey: license
 
-  # Vault license from secret
-  license:
-    secretName: vault-license
-    secretKey: license
+    # Resources
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
 
-  # Vault token from secret
-  token:
-    secretName: vault-license
-    secretKey: token
+    # Service configuration
+    service:
+      enabled: true
+      type: ClusterIP
+      port: 8200
 
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "250m"
-    limits:
-      memory: "1Gi"
-      cpu: "500m"
-
-  service:
-    type: ClusterIP
-    port: 8200
-    clusterPort: 8201
-
-  persistence:
-    data:
+    # Data storage
+    dataStorage:
       enabled: true
       size: 10Gi
-      storageClass: ""
-    logs:
+      storageClass: null
+
+    # Audit storage
+    auditStorage:
       enabled: true
       size: 5Gi
-      storageClass: ""
+      storageClass: null
+
+    # High Availability with Raft
+    ha:
+      enabled: true
+      replicas: 1
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = true
+
+          listener "tcp" {
+            tls_disable = 1
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+          }
+
+          storage "raft" {
+            path = "/vault/data"
+          }
+
+          service_registration "kubernetes" {}
+
+          telemetry {
+            disable_hostname = true
+            prometheus_retention_time = "12h"
+            unauthenticated_metrics_access = true
+          }
+
+  # UI configuration
+  ui:
+    enabled: true
+    serviceType: "ClusterIP"
+
+  # Injector (not needed for this stack)
+  injector:
+    enabled: false

@@ -1,0 +1,238 @@
+# Master values file for vault-stack using official Helm charts
+# This file configures all dependencies declared in Chart.yaml
+
+# Global settings
+global:
+  namespace: vault-stack
+
+# HashiCorp Vault Enterprise (official chart)
+vault:
+  enabled: true
+
+  global:
+    enabled: true
+    namespace: vault-stack
+
+  server:
+    image:
+      repository: "hashicorp/vault-enterprise"
+      tag: "1.20-ent"
+      pullPolicy: IfNotPresent
+
+    enterpriseLicense:
+      secretName: vault-license
+      secretKey: license
+
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+
+    dataStorage:
+      enabled: true
+      size: 10Gi
+
+    auditStorage:
+      enabled: true
+      size: 5Gi
+
+    ha:
+      enabled: true
+      replicas: 1
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = true
+          listener "tcp" {
+            tls_disable = 1
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+          }
+          storage "raft" {
+            path = "/vault/data"
+          }
+          service_registration "kubernetes" {}
+          telemetry {
+            disable_hostname = true
+            prometheus_retention_time = "12h"
+            unauthenticated_metrics_access = true
+          }
+
+  ui:
+    enabled: true
+
+  injector:
+    enabled: false
+
+# Bitnami Redis (official chart)
+redis:
+  enabled: true
+
+  global:
+    storageClass: ""
+
+  architecture: standalone
+
+  auth:
+    enabled: true
+    existingSecret: "redis-credentials"
+    existingSecretPasswordKey: "vault-root-user-password"
+
+  master:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+
+    persistence:
+      enabled: true
+      size: 5Gi
+
+# ECK Operator (for Elasticsearch/Kibana)
+eck-operator:
+  enabled: true
+
+  installCRDs: true
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 150Mi
+
+# Grafana (official chart)
+grafana:
+  enabled: true
+
+  adminUser: admin
+  adminPassword: admin
+
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server:80
+          isDefault: true
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+
+# Prometheus (official chart)
+prometheus:
+  enabled: true
+
+  server:
+    enabled: true
+
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 500m
+      limits:
+        memory: 1Gi
+        cpu: 1000m
+
+  alertmanager:
+    enabled: false
+
+  kube-state-metrics:
+    enabled: true
+
+  prometheus-node-exporter:
+    enabled: true
+
+  prometheus-pushgateway:
+    enabled: false
+
+# Loki (official chart)
+loki:
+  enabled: true
+
+  deploymentMode: SingleBinary
+
+  loki:
+    auth_enabled: false
+
+    commonConfig:
+      replication_factor: 1
+
+    storage:
+      type: 'filesystem'
+
+  singleBinary:
+    replicas: 1
+
+    persistence:
+      enabled: true
+      size: 10Gi
+
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+
+# Promtail (official chart)
+promtail:
+  enabled: true
+
+  config:
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# Secrets configuration (base64 encoded)
+secrets:
+  vault:
+    license: "MDJNVjRVVTQzQks1SEdZWVRPSlpXRlFNVE1OTkVXVTMzSko1Q0ZVMlNPSVJBVENXU0VNNTJFMjZTTkdSSEZHTUJRSlpLRk0yMk1LUkJHUVRMS0lWMkZTNlNWUEpIRklWSlVMSkNHRzUyTkdKTVRJU0xKTzVVVlNNMldQSlNFT09MVUxKTUVVWlRCSzVJV1NUM0pKRVpGVVIyRk81SEVPVExaTEpCVEMyMk5OSlZYVVRDVUpVWUZVM0tWT1JIR1VXTFhKWlVUQzNLTkdKSVRLVFJTS1pXVlNNU1NORk5FSVozSkpSQlVVNERDTlpIREFXS1hQQlpWU1dDU09CUkRFTkxHTUZMVkMyS1BORkVYQ1NMSk81VVdDV0NPUEpTRk9WVEdNUkRXWTVDMktORVRNU0xLSkYzVTIyU1ZPUkdVSTIzVUpWQ0VNVktOS1JJVE1US1VKRTNFNFZDSk9WSEdVWTNZSlo1RkNNQ09LUlZUSVYzSkpGWlVTM1NPR0JNVlFTUlFMQVpWRTREQ0s1S1dTVDNKSkY0VTJSQ0pHRkdGSVFKVkpSS0VDNkNXSVJBWE9UM0tJRjNVNjJTQk81TFdTU0xUSkZXVk1ORERJNVdIU1dLWUtKWUdFTVJWTVpTRU8zRFVMSkpVU05TSk5KRVhPVExLTEYyRTJSQ0pPUkdXVTJDVkpWQ0VDTlNOSVJBVE1US0VJSlFVUzJMWE5GU0VPVlRaTUpMV1k1S1pMQkpIQVlSU0dWVEdJUjNNT1JORkdTSldKRlZFUzUyTk5KTVhJVEtFSkYyRTIyVElLVkdVSVFKV0pWQ0VDTlNOSVJCR0NTTEpPNVVXR1NDS09aTkVRVlRLTVJCVVNOU0pOWk5HUVpDWFBBWUVTMkxYTkZORzI2RElMSVpVMjJLUE5aWldTWVNYSEZWV0lWM1lOUlJYU1NKV0s1NFVVNURFSzU0REFZS1RHRlZWUzZKUlBKTVRFUlRUTEpKVVM0MkpOVlNITVpETktaNFdFM0tHT1ZNVEVWTFVNTkRUUzQzQks1SERLU0xKTzVVVlNWMlNHSk1WT05MS0xKTFZDNUMySTVEREFXS1RHRjNXRzNKWkdCTkZPVFJRTUZMVFM1S01MQkpIU1dLWEdWNUZVM0paUEZSRkdTTFRKRldVTTIzRU5WREhLV0pTS1pWVVlWMlNOQlNFT1JMVU1ORUVVNVRFSTVMR1VaQ0hOUjNHRTJKUk9KTkZRMjNVTUpMVU01S1pLNVNHWVlTWEtaMldJUTJLTVJURlFNQjVGWkFVUzJaUEpGTENXVlJRTlEyRlVNVFlHSVpHRVkzQ0xFWkhHNFRISEZCR1dOU0pHVkpIRVNMTEtFM1dTTkRISEUyVVNXRFZNVTNVUUsyWkdCRFVXNDJTSkpYRklORFdPSkNXU1UyWUpKQVdVM0pRT0pXSENWU1VOQkZXWU4zVk01MlVRNERHSVJORENaQ0JOTlJXQ05ERUtZWURHTVpZS0IzVzJWVE1NRjNFVVVCVU9CRkhRU0tKSEZDRE1WS0dKUktXQ1ZTUU5KVlZPU1RVTU5DRE00REJOUTNHNlQzR0k1WEVXTVQyS0JGVVVVVE5JNUVGTU0zRkxKM1hDUlRGRk5YVE8yWlBPTVZVQ1ZDT05CSUZVWjJURjVGVk1XTEhGNUZTVzNDSEtCM1VZTjNLSUo0RVNOMkhKNVFXV05TVk1GVVdDU0RQTVZWVEFVU1VONDNURVJDUkhVNlEK"
+    token: "aHZzLm1ZTjNRenRvcktSVm9TRkdlbGRweDlRNw=="
+  elasticsearch:
+    elasticPassword: "cGFzc3dvcmQxMjM="
+    kibanaPassword: "a2liYW5hX3Bhc3N3b3JkMTIz"
+  grafana:
+    adminUser: "YWRtaW4="
+    adminPassword: "YWRtaW4="
+  redis:
+    vaultRootUserPassword: "Vm91bHRSb290UGFzczEyMyE="
+    vaultDynamicUserPassword: "VmF1bHREeW5hbWljUGFzczEyMyE="
+    vaultStaticUser1Password: "VmF1bHRTdGF0aWMxUGFzczEyMyE="
+    vaultStaticUser2Password: "VmF1bHRTdGF0aWMyUGFzczEyMyE="
+    vaultStaticUser3Password: "VmF1bHRTdGF0aWMzUGFzczEyMyE="
+    vaultStaticUser4Password: "VmF1bHRTdGF0aWM0UGFzczEyMyE="
+  xpackEncryptionKey: "Zmhqc2tsb3BwZDY3OGVoa2RmZGxsaXZlcnBvb2xmY3I="
