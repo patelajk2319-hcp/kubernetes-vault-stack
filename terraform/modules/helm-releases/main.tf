@@ -44,97 +44,15 @@ resource "null_resource" "elk_stack" {
   }
 
   provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Waiting for ECK operator CRDs to be ready..."
-
-      # Wait for ECK operator pod to be running
-      kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=elastic-operator -n ${var.namespace} --timeout=120s || true
-
-      # Retry loop for CRD availability (max 3 minutes)
-      for i in {1..18}; do
-        if kubectl get crd elasticsearches.elasticsearch.k8s.elastic.co >/dev/null 2>&1; then
-          echo "ECK CRDs are ready"
-          break
-        fi
-        echo "Waiting for ECK CRDs... (attempt $i/18)"
-        sleep 10
-      done
-
-      # Deploy Elasticsearch
-      cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1
-kind: Elasticsearch
-metadata:
-  name: elasticsearch
-  namespace: ${var.namespace}
-spec:
-  version: 8.12.0
-  nodeSets:
-  - name: default
-    count: 1
-    config:
-      node.store.allow_mmap: false
-    volumeClaimTemplates:
-    - metadata:
-        name: elasticsearch-data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            requests:
-              memory: 512Mi
-              cpu: 500m
-            limits:
-              memory: 1Gi
-              cpu: 1000m
-EOF
-
-      # Wait a bit for Elasticsearch to start creating
-      sleep 10
-
-      # Deploy Kibana
-      cat <<EOF | kubectl apply -f -
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kibana
-  namespace: ${var.namespace}
-spec:
-  version: 8.12.0
-  count: 1
-  elasticsearchRef:
-    name: elasticsearch
-  podTemplate:
-    spec:
-      containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: 512Mi
-            cpu: 500m
-          limits:
-            memory: 1Gi
-            cpu: 1000m
-EOF
-
-      echo "ELK stack deployed successfully"
-    EOT
+    command = "${path.module}/../../scripts/deploy_elk.sh"
+    environment = {
+      NAMESPACE = var.namespace
+    }
   }
 
   provisioner "local-exec" {
     when    = destroy
-    command = <<-EOT
-      kubectl delete kibana kibana -n vault-stack --ignore-not-found=true
-      kubectl delete elasticsearch elasticsearch -n vault-stack --ignore-not-found=true
-    EOT
+    command = "NAMESPACE=vault-stack ${path.module}/../../scripts/destroy_elk.sh"
   }
 
   depends_on = [
