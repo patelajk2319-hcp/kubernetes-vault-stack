@@ -24,21 +24,53 @@ helm repo update
 echo -e "${BLUE}Building chart dependencies (downloading official charts)${NC}"
 helm dependency update "$CHART_PATH"
 
+# Check if namespace is terminating and wait for it to be fully deleted
+if kubectl get namespace "$NAMESPACE" 2>/dev/null | grep -q Terminating; then
+  echo -e "${YELLOW}Namespace $NAMESPACE is terminating. Waiting for cleanup to complete...${NC}"
+  kubectl get namespace "$NAMESPACE" -o json | \
+    jq '.spec.finalizers = []' | \
+    kubectl replace --raw "/api/v1/namespaces/$NAMESPACE/finalize" -f - || true
+
+  # Wait for namespace to be fully deleted
+  while kubectl get namespace "$NAMESPACE" &>/dev/null; do
+    echo -e "${YELLOW}Waiting for namespace to be deleted...${NC}"
+    sleep 2
+  done
+  echo -e "${GREEN}Namespace deleted${NC}"
+fi
+
 # Create namespace if it doesn't exist
-kubectl create namespace "$NAMESPACE" 2>/dev/null || true
+if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
+  echo -e "${BLUE}Creating namespace $NAMESPACE${NC}"
+  kubectl create namespace "$NAMESPACE"
+else
+  echo -e "${GREEN}Namespace $NAMESPACE already exists${NC}"
+fi
 
 # Check if release exists and upgrade or install
-# Note: Using the main values.yaml file which configures all dependencies
+# Note: Using separate values files for each service
 if helm list -n "$NAMESPACE" 2>/dev/null | grep -q "$RELEASE_NAME"; then
   echo -e "${YELLOW}Upgrading existing release${NC}"
   helm upgrade "$RELEASE_NAME" "$CHART_PATH" \
     -n "$NAMESPACE" \
-    -f "$CHART_PATH/values.yaml"
+    -f "$CHART_PATH/values/global/global.yaml" \
+    -f "$CHART_PATH/values/vault/vault.yaml" \
+    -f "$CHART_PATH/values/elasticsearch/elasticsearch.yaml" \
+    -f "$CHART_PATH/values/grafana/grafana.yaml" \
+    -f "$CHART_PATH/values/prometheus/prometheus.yaml" \
+    -f "$CHART_PATH/values/loki/loki.yaml" \
+    -f "$CHART_PATH/values/promtail/promtail.yaml"
 else
   echo -e "${BLUE}Installing new release${NC}"
   helm install "$RELEASE_NAME" "$CHART_PATH" \
     -n "$NAMESPACE" \
-    -f "$CHART_PATH/values.yaml"
+    -f "$CHART_PATH/values/global/global.yaml" \
+    -f "$CHART_PATH/values/vault/vault.yaml" \
+    -f "$CHART_PATH/values/elasticsearch/elasticsearch.yaml" \
+    -f "$CHART_PATH/values/grafana/grafana.yaml" \
+    -f "$CHART_PATH/values/prometheus/prometheus.yaml" \
+    -f "$CHART_PATH/values/loki/loki.yaml" \
+    -f "$CHART_PATH/values/promtail/promtail.yaml"
 fi
 
 echo ""

@@ -1,26 +1,42 @@
-# Loki configuration
+# Loki Configuration (official chart)
 loki:
   enabled: true
-  image:
-    repository: grafana/loki
-    tag: "2.9.3"
-    pullPolicy: IfNotPresent
 
-  replicas: 1
+  deploymentMode: SingleBinary
 
-  resources:
-    requests:
-      memory: "256Mi"
-      cpu: "250m"
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    storage:
+      type: 'filesystem'
+    schemaConfig:
+      configs:
+        - from: 2024-01-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
 
-  service:
-    type: ClusterIP
-    port: 3100
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+      limits:
+        memory: 512Mi
+        cpu: 500m
 
-  persistence:
-    enabled: true
-    size: 10Gi
-    storageClass: ""
+  # Disable other modes
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+  backend:
+    replicas: 0

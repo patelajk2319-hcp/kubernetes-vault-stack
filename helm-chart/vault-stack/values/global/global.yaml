@@ -1,0 +1,3 @@
+# Global settings for the vault-stack
+global:
+  namespace: vault-stack
