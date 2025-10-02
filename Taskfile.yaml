@@ -16,6 +16,7 @@ tasks:
       - ./scripts/00_create-certs.sh
       - NAMESPACE={{.NAMESPACE}} ./scripts/01_secrets_from_certs.sh
       - NAMESPACE={{.NAMESPACE}} RELEASE_NAME={{.RELEASE_NAME}} CHART_PATH={{.CHART_PATH}} ./scripts/10_deploy_helm.sh
+      - NAMESPACE={{.NAMESPACE}} ./scripts/11_deploy_elk.sh
       - NAMESPACE={{.NAMESPACE}} ./scripts/20_port_forwarding.sh
       - echo "Stack deployed successfully!"
 
