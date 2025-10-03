@@ -74,6 +74,9 @@
 - Never skip these steps after deployment
 - Document any Vault configuration changes in the automation code
 
+## Kibana and Elasticsearch Configuration:
+- Always verify that Kibana and Elastic are accessible via web browser via https 
+
 ## Branching and Development Workflow:
 1. Create a feature/fix branch from main
 2. Make your changes and test them
