@@ -26,7 +26,7 @@ output "service_urls" {
 
 output "next_steps" {
   description = "Instructions for next steps"
-  value = <<-EOT
+  value       = <<-EOT
 
     Deployment complete!
 
