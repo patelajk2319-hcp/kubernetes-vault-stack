@@ -51,6 +51,7 @@
 - Follow Terraform best practices at all times
 - Use proper state management
 - Use modules for clear separation of concerns
+- Run terraform fmt so that the files are in canonical format
 - All Terraform changes must go through the automation workflow
 
 ### Helm Requirements:
@@ -58,6 +59,7 @@
 - **NEVER use community Helm charts**
 - Properly version and pin all chart versions
 - Use values files for configuration, never inline values
+- Value files should be separated by service never put everything in a single file
 - All Helm changes must go through the automation workflow
 
 ### Kubernetes Standards:
