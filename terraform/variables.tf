@@ -4,18 +4,6 @@ variable "namespace" {
   default     = "vault-stack"
 }
 
-variable "release_name" {
-  description = "Helm release name"
-  type        = string
-  default     = "vault-stack"
-}
-
-variable "chart_path" {
-  description = "Path to the Helm chart"
-  type        = string
-  default     = "../helm-chart/vault-stack"
-}
-
 variable "vault_license_file" {
   description = "Path to Vault Enterprise license file"
   type        = string

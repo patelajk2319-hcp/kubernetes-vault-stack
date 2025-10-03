@@ -1,34 +1,116 @@
-# Add required Helm repositories
-resource "helm_release" "vault_stack" {
-  name             = var.release_name
-  chart            = var.chart_path
+# HashiCorp Vault Enterprise
+resource "helm_release" "vault" {
+  name             = "vault-stack"
+  repository       = "https://helm.releases.hashicorp.com"
+  chart            = "vault"
+  version          = "0.31.0"
   namespace        = var.namespace
   create_namespace = true
   timeout          = 600
   wait             = true
 
-  # All values files
   values = [
-    file("${var.chart_path}/values/global/global.yaml"),
-    file("${var.chart_path}/values/vault/vault.yaml"),
-    file("${var.chart_path}/values/elasticsearch/elasticsearch.yaml"),
-    file("${var.chart_path}/values/grafana/grafana.yaml"),
-    file("${var.chart_path}/values/prometheus/prometheus.yaml"),
-    file("${var.chart_path}/values/loki/loki.yaml"),
-    file("${var.chart_path}/values/promtail/promtail.yaml"),
+    file("${path.root}/../helm-chart/vault-stack/values/vault/vault.yaml")
   ]
-
-  # Override with license secret
-  set {
-    name  = "secrets.vault.license"
-    value = var.vault_license_b64
-  }
 }
 
-# ECK operator is deployed via the vault-stack chart
-# Deploy Elasticsearch and Kibana using kubectl apply with retry logic
+# Elastic Cloud on Kubernetes (ECK) Operator
+resource "helm_release" "eck_operator" {
+  name       = "elastic-operator"
+  repository = "https://helm.elastic.co"
+  chart      = "eck-operator"
+  version    = "2.10.0"
+  namespace  = var.namespace
+  timeout    = 300
+  wait       = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/elasticsearch/elasticsearch.yaml")
+  ]
+
+  depends_on = [
+    helm_release.vault
+  ]
+}
+
+# Grafana
+resource "helm_release" "grafana" {
+  name       = "vault-stack-grafana"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "grafana"
+  version    = "8.9.0"
+  namespace  = var.namespace
+  timeout    = 300
+  wait       = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/grafana/grafana.yaml")
+  ]
+
+  depends_on = [
+    helm_release.vault
+  ]
+}
+
+# Prometheus
+resource "helm_release" "prometheus" {
+  name       = "vault-stack-prometheus"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "prometheus"
+  version    = "25.28.0"
+  namespace  = var.namespace
+  timeout    = 300
+  wait       = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/prometheus/prometheus.yaml")
+  ]
+
+  depends_on = [
+    helm_release.vault
+  ]
+}
+
+# Loki
+resource "helm_release" "loki" {
+  name       = "vault-stack-loki"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "loki"
+  version    = "6.27.0"
+  namespace  = var.namespace
+  timeout    = 300
+  wait       = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/loki/loki.yaml")
+  ]
+
+  depends_on = [
+    helm_release.vault
+  ]
+}
+
+# Promtail
+resource "helm_release" "promtail" {
+  name       = "vault-stack-promtail"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "promtail"
+  version    = "6.16.6"
+  namespace  = var.namespace
+  timeout    = 300
+  wait       = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/promtail/promtail.yaml")
+  ]
+
+  depends_on = [
+    helm_release.loki
+  ]
+}
 
 # Deploy ELK stack using kubectl with built-in retry
+# ECK operator must be deployed and CRDs ready before deploying Elasticsearch/Kibana
 resource "null_resource" "elk_stack" {
   triggers = {
     elasticsearch_config = md5(jsonencode({
@@ -44,7 +126,7 @@ resource "null_resource" "elk_stack" {
   }
 
   provisioner "local-exec" {
-    command = "${path.module}/../../scripts/deploy_elk.sh"
+    command     = "bash -c 'cd ${path.root} && ./scripts/deploy_elk.sh'"
     environment = {
       NAMESPACE = var.namespace
     }
@@ -52,10 +134,10 @@ resource "null_resource" "elk_stack" {
 
   provisioner "local-exec" {
     when    = destroy
-    command = "NAMESPACE=vault-stack ${path.module}/../../scripts/destroy_elk.sh"
+    command = "bash -c 'cd ${path.root} && NAMESPACE=vault-stack ./scripts/destroy_elk.sh'"
   }
 
   depends_on = [
-    helm_release.vault_stack
+    helm_release.eck_operator
   ]
 }
