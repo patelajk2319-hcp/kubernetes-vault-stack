@@ -58,19 +58,33 @@ resource "kubernetes_secret" "elasticsearch_certs" {
   depends_on = [kubernetes_namespace.vault_stack]
 }
 
+resource "kubernetes_secret" "vault_license" {
+  metadata {
+    name      = "vault-license"
+    namespace = var.namespace
+  }
+
+  data = {
+    "license" = local.vault_license
+  }
+
+  type = "Opaque"
+
+  depends_on = [kubernetes_namespace.vault_stack]
+}
+
 # Deploy Helm releases
 module "helm_releases" {
   source = "./modules/helm-releases"
 
   namespace         = var.namespace
-  release_name      = var.release_name
-  chart_path        = var.chart_path
   vault_license_b64 = local.vault_license_b64
 
   depends_on = [
     kubernetes_namespace.vault_stack,
     kubernetes_secret.vault_certs,
-    kubernetes_secret.elasticsearch_certs
+    kubernetes_secret.elasticsearch_certs,
+    kubernetes_secret.vault_license
   ]
 }
 
@@ -103,7 +117,7 @@ resource "kubernetes_service" "vault_nodeport" {
 
     selector = {
       "app.kubernetes.io/name"     = "vault"
-      "app.kubernetes.io/instance" = var.release_name
+      "app.kubernetes.io/instance" = "vault-stack"
     }
 
     port {
@@ -135,7 +149,7 @@ resource "kubernetes_service" "grafana_nodeport" {
 
     selector = {
       "app.kubernetes.io/name"     = "grafana"
-      "app.kubernetes.io/instance" = var.release_name
+      "app.kubernetes.io/instance" = "vault-stack-grafana"
     }
 
     port {
@@ -160,7 +174,7 @@ resource "kubernetes_service" "prometheus_nodeport" {
 
     selector = {
       "app.kubernetes.io/name"     = "prometheus"
-      "app.kubernetes.io/instance" = var.release_name
+      "app.kubernetes.io/instance" = "vault-stack-prometheus"
     }
 
     port {

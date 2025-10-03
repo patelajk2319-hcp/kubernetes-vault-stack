@@ -3,9 +3,9 @@ output "namespace" {
   value       = var.namespace
 }
 
-output "vault_stack_status" {
-  description = "Status of the Vault stack Helm release (includes ECK operator)"
-  value       = module.helm_releases.vault_stack_status
+output "vault_status" {
+  description = "Status of the Vault Helm release"
+  value       = module.helm_releases.vault_status
 }
 
 output "vault_certs_secret" {

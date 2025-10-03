@@ -1,6 +1,6 @@
-output "vault_stack_status" {
-  description = "Status of the Vault stack Helm release"
-  value       = helm_release.vault_stack.status
+output "vault_status" {
+  description = "Status of the Vault Helm release"
+  value       = helm_release.vault.status
 }
 
 output "namespace" {
