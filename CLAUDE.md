@@ -18,12 +18,13 @@
 - **NEVER push to main**
 
 **Automatic Branch Creation:**
-- At the start of ANY work session, immediately create a new branch
+- At the start of ANY work session, check the current branch
+- **If currently on main branch:** immediately create a new branch before making any changes
 - Branch naming convention: `claude-<random_string>` where random_string is exactly 7 random alphanumeric characters (lowercase letters and numbers only)
 - Example: `claude-a3k9m2x`, `claude-7bq4n1p`, `claude-x8w2v5k`
-- Always create this branch from the current main branch
-- Immediately switch to this branch before making any changes
-- All work must be done on this claude-* branch
+- Create this branch from main and immediately switch to it
+- **If already on a different branch (not main):** continue working on the current branch
+- All work must never be done directly on main
 
 **Merging to main requires explicit user permission:**
 - You may prepare branches and PRs, but STOP before merging
@@ -85,18 +86,19 @@
 - Always verify that Kibana and Elastic are accessible via web browser via https 
 
 ## Branching and Development Workflow:
-1. At the START of any work, create a branch named `claude-<7_random_chars>` from main
-2. Switch to this branch immediately
-3. Make your changes and test them
-4. Run the full deployment sequence to verify
-5. Commit changes to your branch
-6. Push your branch (never push to main)
-7. Create a PR if needed
-8. **STOP and ask user for permission before merging to main**
+1. At the START of any work, check current branch with `git branch --show-current`
+2. **If on main:** create a branch named `claude-<7_random_chars>` from main and switch to it
+3. **If on another branch:** continue on that branch
+4. Make your changes and test them
+5. Run the full deployment sequence to verify
+6. Commit changes to your branch
+7. Push your branch (never push to main)
+8. Create a PR if needed
+9. **STOP and ask user for permission before merging to main**
 
 ## Summary:
 - This CLAUDE.md file is read-only - never modify it
-- Always start by creating a `claude-<random>` branch before any work
+- Check current branch at start - only create `claude-<random>` branch if currently on main
 - The automation must be the source of truth
 - If something fails, fix the automation code itself, not just the immediate problem
 - Always validate fixes by running the complete deployment sequence
