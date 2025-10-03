@@ -1,17 +1,3 @@
-# ==============================================================================
-# Helm Releases for Vault Stack Components
-# ==============================================================================
-# This module deploys all components using official Helm charts from their
-# respective official repositories. Each component is deployed as a separate
-# helm_release resource for better modularity and independent lifecycle management.
-#
-# IMPORTANT: wait=false is used for all releases because Vault pods won't be
-# ready until manually initialized and unsealed. The deployment workflow is:
-# 1. terraform apply (deploys all charts)
-# 2. task init (initialize Vault)
-# 3. task unseal (unseal Vault and start port-forwarding)
-# ==============================================================================
-
 # HashiCorp Vault Enterprise - Secrets management platform
 # Official chart from HashiCorp Helm repository
 resource "helm_release" "vault" {
