@@ -7,7 +7,7 @@ resource "helm_release" "vault" {
   namespace        = var.namespace
   create_namespace = true
   timeout          = 600
-  wait             = true
+  wait             = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/vault/vault.yaml")
@@ -22,7 +22,7 @@ resource "helm_release" "eck_operator" {
   version    = "2.10.0"
   namespace  = var.namespace
   timeout    = 300
-  wait       = true
+  wait       = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/elasticsearch/elasticsearch.yaml")
@@ -41,7 +41,7 @@ resource "helm_release" "grafana" {
   version    = "8.9.0"
   namespace  = var.namespace
   timeout    = 300
-  wait       = true
+  wait       = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/grafana/grafana.yaml")
@@ -60,7 +60,7 @@ resource "helm_release" "prometheus" {
   version    = "25.28.0"
   namespace  = var.namespace
   timeout    = 300
-  wait       = true
+  wait       = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/prometheus/prometheus.yaml")
@@ -79,7 +79,7 @@ resource "helm_release" "loki" {
   version    = "6.27.0"
   namespace  = var.namespace
   timeout    = 300
-  wait       = true
+  wait       = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/loki/loki.yaml")
@@ -98,7 +98,7 @@ resource "helm_release" "promtail" {
   version    = "6.16.6"
   namespace  = var.namespace
   timeout    = 300
-  wait       = true
+  wait       = false
 
   values = [
     file("${path.root}/../helm-chart/vault-stack/values/promtail/promtail.yaml")
