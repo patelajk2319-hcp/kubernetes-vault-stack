@@ -7,7 +7,21 @@
 - You must read and follow these instructions, but never edit them
 - If you think these instructions need updating, inform the user but do not make changes
 - If instructions are unclear or conflicting, ask the user for clarification
-- This file defines your behavior - you do not define your own behavior
+- This file defines your behaviour - you do not define your own behaviour
+
+## Language and Documentation Standards
+
+**All comments, documentation, and non-code text must use UK English:**
+- Use UK spelling: colour (not color), initialise (not initialize), behaviour (not behavior), centre (not center), analyse (not analyze)
+- Use UK grammar and punctuation conventions
+- This applies to:
+  - Code comments
+  - Documentation files (README.md, etc.)
+  - Commit messages
+  - PR descriptions
+  - Configuration file comments
+  - Any text output or logs you create
+- Code identifiers (variable names, function names, etc.) can follow standard conventions of the language/framework being used
 
 ## Critical Git Safety Rules
 
@@ -45,7 +59,7 @@
 
 - **If `task up` fails, DO NOT just fix and re-run the failing command**
 - **Errors indicate the AUTOMATION itself needs fixing**
-- Analyze logs from `task up` failures
+- Analyse logs from `task up` failures
 - Fix the underlying automation code (Terraform, Helm values, etc.)
 - After fixing automation, ALWAYS run the full sequence again: `task rm` → `task up` → `task init` → `task unseal` and check kibana is accessible via https://localhost:5601
 - Never apply manual fixes that bypass the automation
@@ -98,6 +112,7 @@
 
 ## Summary:
 - This CLAUDE.md file is read-only - never modify it
+- All comments and documentation must use UK English spelling and grammar
 - Check current branch at start - only create `claude-<random>` branch if currently on main
 - The automation must be the source of truth
 - If something fails, fix the automation code itself, not just the immediate problem

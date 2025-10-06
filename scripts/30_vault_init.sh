@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Initialize Vault and save credentials
-# This script checks if Vault is already initialized, initializes it with a single key,
+# Initialise Vault and save credentials
+# This script checks if Vault is already initialised, initialises it with a single key,
 # and saves the root token to .env and all credentials to vault-init.json
 
 set -e
@@ -23,18 +23,18 @@ if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then
   echo -e "${GREEN}Found Vault pod: $VAULT_POD${NC}"
 fi
 
-# Check if Vault is already initialized
+# Check if Vault is already initialised
 STATUS=$(kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- vault status -format=json 2>&1 || echo '{"initialized":false}')
 INITIALIZED=$(echo "$STATUS" | grep -o '"initialized":[^,]*' | cut -d':' -f2)
 
 if [ "$INITIALIZED" = "true" ]; then
-  echo -e "${YELLOW}Vault is already initialized${NC}"
+  echo -e "${YELLOW}Vault is already initialised${NC}"
   echo "Vault details are in vault-init.json and .env"
-  echo "If you want to re-initialize, run 'task clean' first"
+  echo "If you want to re-initialise, run 'task clean' first"
   exit 1
 fi
 
-# Initialize Vault with single key
+# Initialise Vault with single key
 echo -e "${BLUE}Initialising Vault${NC}"
 kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- \
   vault operator init \

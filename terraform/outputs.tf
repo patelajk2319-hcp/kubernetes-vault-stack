@@ -10,7 +10,7 @@ output "vault_status" {
 
 output "vault_certs_secret" {
   description = "Name of the Vault certificates secret"
-  value       = kubernetes_secret.vault_certs.metadata[0].name
+  value       = module.kubernetes_secrets.vault_certs_name
 }
 
 output "service_urls" {
@@ -46,7 +46,7 @@ output "next_steps" {
        kubectl port-forward -n vault-stack svc/kibana-nodeport 5601:5601 &
        kubectl port-forward -n vault-stack svc/elasticsearch-nodeport 9200:9200 &
 
-    2. Initialize Vault:
+    2. Initialise Vault:
        task init
 
     3. Unseal Vault:

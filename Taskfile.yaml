@@ -14,7 +14,7 @@ tasks:
       - pre-deploy-checks
     dir: terraform
     cmds:
-      - terraform init
+      - terraform init -upgrade
       - terraform apply -auto-approve
       - echo "Stack deployed successfully!"
       - echo ""
@@ -57,12 +57,6 @@ tasks:
     desc: View logs for a service
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/tools/logs.sh {{.CLI_ARGS}}
-
-  # Vault shell
-  shell:
-    desc: Open a shell in the Vault pod
-    cmds:
-      - kubectl exec -it -n {{.NAMESPACE}} {{.VAULT_POD}} -- /bin/sh
 
   # Internal: Pre-deployment checks
   pre-deploy-checks:
