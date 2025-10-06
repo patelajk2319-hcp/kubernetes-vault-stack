@@ -2,7 +2,7 @@
 
 # Display access information and credentials for all services
 
-# Source centralized color configuration
+# Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
 
 echo -e "${BLUE}===================================${NC}"

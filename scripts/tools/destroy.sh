@@ -2,7 +2,7 @@
 
 # Clean/destroy the entire stack using Terraform
 
-# Source centralized color configuration
+# Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
@@ -15,9 +15,17 @@ pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 echo -e "${YELLOW}Running Terraform Destroy...${NC}"
 cd "$(dirname "$0")/../../terraform"
 
-# Check if .terraform directory exists (indicates modules are installed)
-if [ ! -d ".terraform" ]; then
-  echo -e "${YELLOW}No Terraform modules installed - nothing to destroy${NC}"
+# Check if state file exists (indicates resources were deployed)
+if [ ! -f "terraform.tfstate" ] && [ ! -f "terraform.tfstate.backup" ]; then
+  echo -e "${YELLOW}No Terraform state found - nothing to destroy${NC}"
+
+  # Clean up any leftover Terraform files
+  if [ -d ".terraform" ] || [ -f ".terraform.lock.hcl" ]; then
+    echo -e "${BLUE}Cleaning up Terraform initialisation files...${NC}"
+    rm -rf .terraform/ .terraform.lock.hcl
+    echo -e "${GREEN}Terraform files cleaned${NC}"
+  fi
+
   cd ..
 
   # Remove vault-init.json if it exists
@@ -29,6 +37,10 @@ if [ ! -d ".terraform" ]; then
   echo -e "${GREEN}Stack already destroyed${NC}"
   exit 0
 fi
+
+# Initialise Terraform (in case modules were updated)
+echo -e "${BLUE}Initialising Terraform...${NC}"
+terraform init -upgrade > /dev/null 2>&1
 
 # Run destroy (don't use set -e to allow cleanup even if destroy fails)
 if terraform destroy -auto-approve; then

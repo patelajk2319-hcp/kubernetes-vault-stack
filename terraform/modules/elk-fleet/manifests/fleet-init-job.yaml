@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fleet-init
+  namespace: ${namespace}
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      serviceAccountName: fleet-init
+      restartPolicy: OnFailure
+      containers:
+      - name: fleet-init
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "/scripts/init-fleet.sh"]
+        env:
+        - name: KIBANA_HOST
+          value: "${kibana_host}"
+        - name: ELASTICSEARCH_HOST
+          value: "${elasticsearch_host}"
+        - name: KIBANA_USER
+          value: "elastic"
+        - name: KIBANA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-es-elastic-user
+              key: elastic
+        - name: NAMESPACE
+          value: "${namespace}"
+        volumeMounts:
+        - name: init-script
+          mountPath: /scripts
+      volumes:
+      - name: init-script
+        configMap:
+          name: fleet-init-script
+          defaultMode: 0755

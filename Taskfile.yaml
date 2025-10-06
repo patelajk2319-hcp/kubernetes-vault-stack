@@ -12,13 +12,8 @@ tasks:
     desc: Deploy the entire Vault stack using Terraform
     deps:
       - pre-deploy-checks
-    dir: terraform
     cmds:
-      - terraform init -upgrade
-      - terraform apply -auto-approve
-      - echo "Stack deployed successfully!"
-      - echo ""
-      - echo "Run 'task port-forward' to set up port forwarding to localhost"
+      - ./scripts/10_deploy_infra.sh
 
   # Initialise Vault
   init:
@@ -57,6 +52,12 @@ tasks:
     desc: View logs for a service
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/tools/logs.sh {{.CLI_ARGS}}
+
+  # Enable audit log collection in ELK
+  audit:
+    desc: Enable Vault audit log collection in ELK (Fleet integration)
+    cmds:
+      - ./scripts/50_vault_elk_integration.sh
 
   # Internal: Pre-deployment checks
   pre-deploy-checks:

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-agent
+  namespace: ${namespace}
+  labels:
+    app: elastic-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elastic-agent
+  template:
+    metadata:
+      labels:
+        app: elastic-agent
+    spec:
+      containers:
+      - name: elastic-agent
+        image: docker.elastic.co/beats/elastic-agent:${fleet_version}
+        env:
+        - name: FLEET_ENROLL
+          value: "1"
+        - name: FLEET_URL
+          value: "http://fleet-server.${namespace}.svc:8220"
+        - name: FLEET_ENROLLMENT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: elastic-agent-enrollment-token
+              key: token
+        - name: FLEET_INSECURE
+          value: "true"
+        - name: ELASTIC_AGENT_LOG_LEVEL
+          value: "debug"
+        volumeMounts:
+        - name: vault-audit-logs
+          mountPath: /vault/logs
+          readOnly: true
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+      volumes:
+      - name: vault-audit-logs
+        persistentVolumeClaim:
+          claimName: vault-audit-logs

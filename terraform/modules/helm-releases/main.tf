@@ -40,7 +40,7 @@ resource "helm_release" "eck_operator" {
   ]
 }
 
-# Grafana - Visualization and dashboards for metrics and logs
+# Grafana - Visualisation and dashboards for metrics and logs
 # Official chart from Grafana Helm repository
 resource "helm_release" "grafana" {
   name       = "vault-stack-grafana"

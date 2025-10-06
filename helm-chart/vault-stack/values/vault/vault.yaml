@@ -29,8 +29,25 @@ vault:
       size: 10Gi
 
     auditStorage:
-      enabled: true
-      size: 5Gi
+      enabled: false  # Disable built-in audit storage, use shared PVC instead
+
+    # Shared audit logs volume for Elastic Agent access
+    volumes:
+      - name: vault-audit-logs
+        persistentVolumeClaim:
+          claimName: vault-audit-logs
+
+    # Mount audit logs volume to shared location
+    volumeMounts:
+      - mountPath: /vault/logs
+        name: vault-audit-logs
+
+    # Extra volumes for HA mode (Helm chart uses different path for StatefulSets)
+    extraVolumes:
+      - type: pvc
+        name: vault-audit-logs
+        claimName: vault-audit-logs
+        path: /vault/logs
 
     ha:
       enabled: true
@@ -62,7 +79,7 @@ vault:
     enabled: false
 
 # Vault secrets configuration (base64 encoded)
-# IMPORTANT: The license must be provided via .env file
+# IMPORTANT: The licence must be provided via .env file
 # The deployment script will read VAULT_LICENSE from .env and encode it
 secrets:
   vault:

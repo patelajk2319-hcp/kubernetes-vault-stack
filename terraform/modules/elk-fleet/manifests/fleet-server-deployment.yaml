@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-server
+  namespace: ${namespace}
+  labels:
+    app: fleet-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fleet-server
+  template:
+    metadata:
+      labels:
+        app: fleet-server
+    spec:
+      containers:
+      - name: fleet-server
+        image: docker.elastic.co/beats/elastic-agent:${fleet_version}
+        ports:
+        - containerPort: 8220
+          name: http
+          protocol: TCP
+        env:
+        - name: FLEET_SERVER_ENABLE
+          value: "1"
+        - name: FLEET_SERVER_ELASTICSEARCH_HOST
+          value: "${elasticsearch_host}"
+        - name: FLEET_SERVER_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: fleet-server-token
+              key: token
+        - name: FLEET_SERVER_POLICY_ID
+          value: "fleet-server-policy"
+        - name: FLEET_SERVER_HOST
+          value: "0.0.0.0"
+        - name: FLEET_SERVER_PORT
+          value: "8220"
+        - name: FLEET_SERVER_INSECURE_HTTP
+          value: "true"
+        - name: KIBANA_FLEET_HOST
+          value: "${kibana_host}"
+        - name: KIBANA_FLEET_USERNAME
+          value: "elastic"
+        - name: KIBANA_FLEET_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-es-elastic-user
+              key: elastic
+        - name: FLEET_SERVER_ELASTICSEARCH_INSECURE
+          value: "true"
+        - name: FLEET_SERVER_INSECURE
+          value: "true"
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
