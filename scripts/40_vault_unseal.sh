@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Unseal Vault using the unseal key from vault-init.json
-# This script checks if Vault has been initialized and unseals it
+# This script checks if Vault has been initialised and unseals it
 
 set -e
 
@@ -25,7 +25,7 @@ fi
 # Check if Vault is initialised
 if [ ! -f vault-init.json ]; then
   echo -e "${YELLOW}vault-init.json not found${NC}"
-  echo "Run 'task init' first to initialize Vault"
+  echo "Run 'task init' first to initialise Vault"
   exit 1
 fi
 

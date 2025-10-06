@@ -85,7 +85,6 @@ task unseal       # Unseal Vault and start port forwarding
 task status       # Show status of all components
 task info         # Show access information and credentials
 task logs         # View logs for a service (usage: task logs -- <service-name>)
-task shell        # Open a shell in the Vault pod
 task clean        # Destroy the entire stack (Terraform)
 task rm           # Alias for clean
 ```
@@ -163,14 +162,6 @@ task logs -- kibana
 # Without service name, shows available services
 task logs
 ```
-
-### Access Vault Shell
-
-```bash
-task shell
-```
-
-Opens an interactive shell inside the Vault pod.
 
 ### Clean and Redeploy
 
@@ -339,50 +330,6 @@ kubectl config current-context
 # List available contexts
 kubectl config get-contexts
 ```
-
-## Infrastructure as Code
-
-This project uses **Terraform** to manage all Kubernetes infrastructure:
-
-- **Namespace** creation
-- **TLS certificate** generation
-- **Kubernetes secrets** (certificates, license)
-- **Helm chart** deployments
-- **ECK operator** deployment
-
-### Why Terraform?
-
-- **Declarative** - Define desired state, Terraform handles the rest
-- **State management** - Track infrastructure changes over time
-- **Idempotent** - Safe to run multiple times
-- **Version controlled** - Infrastructure changes in git
-- **Modular** - Reusable modules for certificates, secrets, Helm releases
-
-### Terraform Structure
-
-```
-terraform/
-├── main.tf              # Main configuration
-├── variables.tf         # Input variables
-├── outputs.tf           # Output values
-├── providers.tf         # Provider configuration
-├── modules/
-│   ├── certificates/    # TLS certificate generation
-│   ├── secrets/         # Kubernetes secrets
-│   └── helm-releases/   # Helm chart deployments
-└── README.md            # Terraform documentation
-```
-
-See `terraform/README.md` for detailed Terraform documentation.
-
-### Remaining Shell Scripts
-
-A few shell scripts remain for operational tasks (not infrastructure):
-- Vault init (`30_vault_init.sh`) - One-time initialization
-- Vault unseal (`40_vault_unseal.sh`) - Runtime unsealing
-- Status and info commands (`tools/status.sh`, `tools/info.sh`) - Information display
-
-These cannot be replaced with Terraform as they are runtime operations, not infrastructure provisioning.
 
 ## Development
 

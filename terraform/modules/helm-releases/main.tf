@@ -1,4 +1,4 @@
-# HashiCorp Vault Enterprise - Secrets management platform
+# HashiCorp Vault Enterprise
 # Official chart from HashiCorp Helm repository
 resource "helm_release" "vault" {
   name             = "vault-stack"
@@ -147,7 +147,7 @@ resource "null_resource" "elk_stack" {
 
   # Deploy Elasticsearch and Kibana via kubectl
   provisioner "local-exec" {
-    command     = "bash -c 'cd ${path.root} && ./scripts/deploy_elk.sh'"
+    command = "${path.module}/../kubernetes/scripts/deploy_elk.sh"
     environment = {
       NAMESPACE = var.namespace
     }
@@ -156,7 +156,10 @@ resource "null_resource" "elk_stack" {
   # Clean up ELK resources on destroy
   provisioner "local-exec" {
     when    = destroy
-    command = "bash -c 'cd ${path.root} && NAMESPACE=vault-stack ./scripts/destroy_elk.sh'"
+    command = "${path.module}/../kubernetes/scripts/destroy_elk.sh"
+    environment = {
+      NAMESPACE = "vault-stack"
+    }
   }
 
   depends_on = [
