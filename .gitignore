@@ -5,6 +5,12 @@ vault-init.json
 # Certificates
 certs/
 
+# Vault audit logs (synced from minikube for ELK)
+vault-audit-logs/
+
+# ELK Fleet tokens
+fleet-tokens/
+
 # Terraform
 .terraform/
 *.tfstate

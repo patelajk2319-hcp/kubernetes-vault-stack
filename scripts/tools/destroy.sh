@@ -11,6 +11,17 @@ NAMESPACE="${NAMESPACE:-vault-stack}"
 echo -e "${BLUE}Stopping port-forwards...${NC}"
 pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 
+# Destroy ELK stack (podman) if it exists
+echo -e "${BLUE}Checking for ELK stack (podman)...${NC}"
+cd "$(dirname "$0")/../.."
+if podman ps -a --format "{{.Names}}" 2>/dev/null | grep -q "^k8s_vault_"; then
+  echo -e "${YELLOW}Found ELK stack containers, destroying...${NC}"
+  podman-compose -f elk-compose.yml down -v 2>/dev/null || true
+  echo -e "${GREEN}✓ ELK stack destroyed${NC}"
+else
+  echo -e "${GREEN}✓ No ELK stack containers found${NC}"
+fi
+
 # Run Terraform destroy
 echo -e "${YELLOW}Running Terraform Destroy...${NC}"
 cd "$(dirname "$0")/../../terraform"
@@ -54,11 +65,29 @@ else
   exit 1
 fi
 
-# Remove vault-init.json if it exists
+# Remove runtime directories and files
 cd ..
 if [ -f vault-init.json ]; then
   rm -f vault-init.json
   echo -e "${GREEN}Removed vault-init.json${NC}"
+fi
+
+# Remove fleet tokens directory
+if [ -d fleet-tokens ]; then
+  rm -rf fleet-tokens
+  echo -e "${GREEN}Removed fleet-tokens/${NC}"
+fi
+
+# Remove certificates directory
+if [ -d certs ]; then
+  rm -rf certs
+  echo -e "${GREEN}Removed certs/${NC}"
+fi
+
+# Remove vault audit logs directory
+if [ -d vault-audit-logs ]; then
+  rm -rf vault-audit-logs
+  echo -e "${GREEN}Removed vault-audit-logs/${NC}"
 fi
 
 echo -e "${GREEN}Stack destroyed${NC}"

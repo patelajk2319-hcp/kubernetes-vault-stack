@@ -29,25 +29,7 @@ vault:
       size: 10Gi
 
     auditStorage:
-      enabled: false  # Disable built-in audit storage, use shared PVC instead
-
-    # Shared audit logs volume for Elastic Agent access
-    volumes:
-      - name: vault-audit-logs
-        persistentVolumeClaim:
-          claimName: vault-audit-logs
-
-    # Mount audit logs volume to shared location
-    volumeMounts:
-      - mountPath: /vault/logs
-        name: vault-audit-logs
-
-    # Extra volumes for HA mode (Helm chart uses different path for StatefulSets)
-    extraVolumes:
-      - type: pvc
-        name: vault-audit-logs
-        claimName: vault-audit-logs
-        path: /vault/logs
+      enabled: false  # Audit logs stored in /vault/data/logs subdirectory, accessible by sidecar
 
     ha:
       enabled: true

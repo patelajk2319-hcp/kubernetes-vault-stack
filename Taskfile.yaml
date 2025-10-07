@@ -4,7 +4,7 @@ vars:
   NAMESPACE: vault-stack
   RELEASE_NAME: vault-stack
   CHART_PATH: ./helm-chart/vault-stack
-  VAULT_POD: vault-0
+  VAULT_POD: vault-stack-0
 
 tasks:
   # Main deployment command (Terraform)
@@ -28,9 +28,21 @@ tasks:
       - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/40_vault_unseal.sh
       - NAMESPACE={{.NAMESPACE}} ./scripts/20_port_forwarding.sh
 
+  # Configure Vault audit logging and Fleet integration
+  audit:
+    desc: Configure Vault audit logging and Fleet integration with ELK
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/50_vault_configure_audit.sh
+
+  # Create sample data in Vault
+  sample-data:
+    desc: Create sample data in Vault (secrets, auth methods, policies)
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/60_vault_sample_data.sh
+
   # Clean/destroy everything (Terraform)
   clean:
-    desc: Destroy the entire stack using Terraform
+    desc: Destroy the entire stack
     aliases: [rm]
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/tools/destroy.sh
@@ -52,12 +64,6 @@ tasks:
     desc: View logs for a service
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/tools/logs.sh {{.CLI_ARGS}}
-
-  # Enable audit log collection in ELK
-  audit:
-    desc: Enable Vault audit log collection in ELK (Fleet integration)
-    cmds:
-      - ./scripts/50_vault_elk_integration.sh
 
   # Internal: Pre-deployment checks
   pre-deploy-checks:

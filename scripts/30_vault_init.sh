@@ -10,7 +10,7 @@ set -e
 source "$(dirname "$0")/lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
-VAULT_POD="${VAULT_POD:-vault-0}"
+VAULT_POD="${VAULT_POD:-vault-stack-0}"
 
 # Auto-detect Vault pod name if default doesn't exist
 if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then
@@ -58,21 +58,7 @@ echo -e "${BLUE}Unsealing Vault${NC}"
 UNSEAL_KEY=$(cat vault-init.json | jq -r '.unseal_keys_b64[0]')
 kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- vault operator unseal "$UNSEAL_KEY" >/dev/null
 
-# Enable audit logging
-echo -e "${BLUE}Enabling Vault audit logging${NC}"
-kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- \
-  env VAULT_TOKEN="$ROOT_TOKEN" \
-  vault audit enable \
-  -path="audit_log" \
-  file file_path=/vault/logs/vault_audit.log \
-  mode=0644
-
-kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- \
-  env VAULT_TOKEN="$ROOT_TOKEN" \
-  vault audit enable \
-  -path="audit_stdout" \
-  file file_path=stdout
-
 echo -e "${GREEN}Vault initialised!${NC}"
 echo -e "${GREEN}Vault token saved to .env${NC}"
-echo -e "${GREEN}Audit logging enabled!${NC}"
+echo
+echo -e "${YELLOW}Note: Run 'task audit' to configure audit logging and ELK integration${NC}"

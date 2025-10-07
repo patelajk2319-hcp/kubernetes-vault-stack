@@ -19,27 +19,6 @@ resource "helm_release" "vault" {
 # Observability Stack Components
 # ------------------------------------------------------------------------------
 
-# ECK Operator - Manages Elasticsearch and Kibana via Custom Resources
-# Official chart from Elastic Helm repository
-# Note: Elasticsearch and Kibana are deployed via kubectl (see elk_stack below)
-resource "helm_release" "eck_operator" {
-  name       = "elastic-operator"
-  repository = "https://helm.elastic.co"
-  chart      = "eck-operator"
-  version    = "2.10.0"
-  namespace  = var.namespace
-  timeout    = 300
-  wait       = false
-
-  values = [
-    file("${path.root}/../helm-chart/vault-stack/values/elasticsearch/elasticsearch.yaml")
-  ]
-
-  depends_on = [
-    helm_release.vault
-  ]
-}
-
 # Grafana - Visualisation and dashboards for metrics and logs
 # Official chart from Grafana Helm repository
 resource "helm_release" "grafana" {
@@ -117,52 +96,5 @@ resource "helm_release" "promtail" {
 
   depends_on = [
     helm_release.loki # Promtail depends on Loki being available
-  ]
-}
-
-# ------------------------------------------------------------------------------
-# ELK Stack Deployment via kubectl
-# ------------------------------------------------------------------------------
-# Elasticsearch and Kibana are deployed as ECK Custom Resources using kubectl
-# rather than Helm because ECK operator manages them via CRDs. The deploy_elk.sh
-# script contains the resource manifests and includes retry logic to wait for
-# ECK operator CRDs to be ready before applying.
-#
-# This resource triggers redeployment when config changes are detected.
-# ------------------------------------------------------------------------------
-resource "null_resource" "elk_stack" {
-  # Trigger redeployment when ELK configuration changes
-  triggers = {
-    elasticsearch_config = md5(jsonencode({
-      version = "8.12.0"
-      memory  = "512Mi-1Gi"
-      cpu     = "500m-1000m"
-    }))
-    kibana_config = md5(jsonencode({
-      version = "8.12.0"
-      memory  = "512Mi-1Gi"
-      cpu     = "500m-1000m"
-    }))
-  }
-
-  # Deploy Elasticsearch and Kibana via kubectl
-  provisioner "local-exec" {
-    command = "${path.module}/../kubernetes/scripts/deploy_elk.sh"
-    environment = {
-      NAMESPACE = var.namespace
-    }
-  }
-
-  # Clean up ELK resources on destroy
-  provisioner "local-exec" {
-    when    = destroy
-    command = "${path.module}/../kubernetes/scripts/destroy_elk.sh"
-    environment = {
-      NAMESPACE = "vault-stack"
-    }
-  }
-
-  depends_on = [
-    helm_release.eck_operator # Wait for ECK operator to be deployed
   ]
 }

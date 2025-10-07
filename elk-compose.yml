@@ -1,0 +1,181 @@
+services:
+  # ELASTIC AND KIBANA - ELK Stack for Vault audit log collection
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: k8s_vault_elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      # Basic settings
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ELASTIC_PASSWORD=password123
+
+      # TLS Configuration
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/elasticsearch.key
+      - xpack.security.http.ssl.certificate=certs/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca.crt
+      - xpack.security.http.ssl.verification_mode=certificate
+
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/elasticsearch.key
+      - xpack.security.transport.ssl.certificate=certs/elasticsearch.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      # Mount certificates as read-only
+      - ./certs/ca/ca.crt:/usr/share/elasticsearch/config/certs/ca.crt:ro
+      - ./certs/ca/ca.key:/usr/share/elasticsearch/config/certs/ca.key:ro
+      - ./certs/elasticsearch/elasticsearch.crt:/usr/share/elasticsearch/config/certs/elasticsearch.crt:ro
+      - ./certs/elasticsearch/elasticsearch.key:/usr/share/elasticsearch/config/certs/elasticsearch.key:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --cacert config/certs/ca.crt -u elastic:password123 https://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # Kibana init service - Creates users automatically
+  kibana-init:
+    image: docker.io/curlimages/curl:latest
+    container_name: k8s_vault_kibana_init
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./scripts/elk/10_setup-users.sh:/setup.sh:ro,Z
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro,Z
+    command: ["/bin/sh", "/setup.sh"]
+    restart: "no"
+
+  # Kibana with TLS
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: k8s_vault_kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      # Connect to Elasticsearch via HTTPS
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=kibana_password123
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca.crt
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=certificate
+
+      # Enable HTTPS for Kibana
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=config/certs/kibana.crt
+      - SERVER_SSL_KEY=config/certs/kibana.key
+      - SERVER_SSL_CERTIFICATEAUTHORITIES=config/certs/ca.crt
+
+      # Security settings
+      - XPACK_SECURITY_ENABLED=true
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=fhjskloppd678ehkdfdlliverpoolfcr
+      - XPACK_REPORTING_ENCRYPTIONKEY=fhjskloppd678ehkdfdlliverpoolfcr
+      - XPACK_SECURITY_ENCRYPTIONKEY=fhjskloppd678ehkdfdlliverpoolfcr
+    volumes:
+      - kibana-data:/usr/share/kibana/data
+      # Mount certificates as read-only
+      - ./certs/ca/ca.crt:/usr/share/kibana/config/certs/ca.crt:ro
+      - ./certs/kibana/kibana.crt:/usr/share/kibana/config/certs/kibana.crt:ro
+      - ./certs/kibana/kibana.key:/usr/share/kibana/config/certs/kibana.key:ro
+    depends_on:
+      kibana-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f --cacert config/certs/ca.crt https://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Fleet initialisation service - runs once to set up Fleet
+  fleet-init:
+    image: docker.io/curlimages/curl:latest
+    container_name: k8s_vault_fleet_init
+    user: root  # Run as root to fix permission issues
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+    volumes:
+      - ./scripts/elk/fleet/00_init-fleet.sh:/00_init-fleet.sh:ro,Z
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro,Z
+      - ./fleet-tokens:/tokens # Shared volume for tokens
+    command: ["/bin/sh", "-c", "chmod 777 /tokens && /bin/sh /00_init-fleet.sh"]
+    restart: "no"
+    environment:
+      - KIBANA_HOST=https://kibana:5601
+      - KIBANA_USER=elastic
+      - KIBANA_PASSWORD=password123
+      - CA_CERT=/certs/ca.crt
+
+  # Fleet Server with automatic token retrieval
+  # Note that the Fleet Server uses the same image (elastic-agent) as the elastic-agent
+  # This is because the Fleet Server is essentially an agent which will be used to manage other agents
+  fleet-server:
+    image: docker.elastic.co/beats/elastic-agent:8.12.0
+    container_name: k8s_vault_fleet_server
+    restart: unless-stopped
+    ports:
+      - "8220:8220"
+    user: root
+    depends_on:
+      fleet-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro,Z
+      - fleet-server-data:/usr/share/elastic-agent/state
+      - ./fleet-tokens:/tokens:ro,Z # Read tokens from shared volume
+      - ./scripts/elk/fleet/10_start-fleet-server.sh:/10_start-fleet-server.sh:ro
+    entrypoint: ["/bin/sh", "/10_start-fleet-server.sh"]
+    environment:
+      - FLEET_SERVER_ENABLE=1
+      - FLEET_SERVER_ELASTICSEARCH_HOST=https://elasticsearch:9200
+      - FLEET_SERVER_POLICY_ID=fleet-server-policy
+      - FLEET_SERVER_HOST=0.0.0.0
+      - FLEET_SERVER_PORT=8220
+      - FLEET_SERVER_ELASTICSEARCH_USERNAME=elastic
+      - FLEET_SERVER_ELASTICSEARCH_PASSWORD=password123
+      - FLEET_SERVER_ELASTICSEARCH_CA=/certs/ca.crt
+      - FLEET_SERVER_INSECURE_HTTP=true
+      - FLEET_URL=http://fleet-server:8220
+      - KIBANA_FLEET_HOST=https://kibana:5601
+      - KIBANA_FLEET_USERNAME=elastic
+      - KIBANA_FLEET_PASSWORD=password123
+      - KIBANA_FLEET_CA=/certs/ca.crt
+
+  # Elastic Agent - enrollment handled by post-deployment script
+  # Collects Vault audit logs from minikube Vault StatefulSet via bind mount
+  elastic-agent:
+    image: docker.elastic.co/beats/elastic-agent:8.12.0
+    container_name: k8s_vault_elastic_agent
+    restart: unless-stopped
+    user: root
+    depends_on:
+      fleet-server:
+        condition: service_started
+    volumes:
+      - elastic-agent-data:/usr/share/elastic-agent/state
+      - ./vault-audit-logs:/mnt/vault-logs:ro  # Bind mount for Vault audit logs synced from minikube
+      - fleet-tokens:/tokens:ro,Z
+      - ./certs/ca/ca.crt:/certs/ca.crt:ro
+    environment:
+      - FLEET_URL=http://fleet-server:8220
+      - FLEET_INSECURE=true
+      - ELASTIC_AGENT_LOG_LEVEL=info
+
+volumes:
+  elasticsearch-data:
+  kibana-data:
+  fleet-server-data:
+  elastic-agent-data:
+  fleet-tokens:  # Shared volume for Fleet tokens

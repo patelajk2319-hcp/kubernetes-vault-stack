@@ -61,16 +61,3 @@ module "kubernetes_services" {
 
   depends_on = [module.helm_releases]
 }
-
-# Deploy Fleet Server and Elastic Agent for Vault log collection
-module "elk_fleet" {
-  source = "./modules/elk-fleet"
-
-  namespace               = var.namespace
-  fleet_server_version    = "8.12.0"
-  audit_logs_storage_size = "5Gi"
-  elasticsearch_host      = "https://elasticsearch-es-http.${var.namespace}.svc:9200"
-  kibana_host             = "https://kibana-kb-http.${var.namespace}.svc:5601"
-
-  depends_on = [module.helm_releases]
-}
