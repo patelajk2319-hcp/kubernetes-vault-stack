@@ -37,6 +37,7 @@ tasks:
   # Create sample data in Vault
   sample-data:
     desc: Create sample data in Vault (secrets, auth methods, policies)
+    aliases: [data]
     cmds:
       - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/60_vault_sample_data.sh
 
