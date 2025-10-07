@@ -9,6 +9,12 @@ source "$(dirname "$0")/lib/colors.sh"
 
 echo -e "${BLUE}=== Deploying Vault Stack Infrastructure ===${NC}"
 
+# Set up minikube mount for audit logs
+echo -e "${BLUE}Setting up minikube mount for audit logs...${NC}"
+cd "$(dirname "$0")/.."
+./scripts/tools/setup-minikube-mount.sh
+echo ""
+
 # Change to terraform directory
 cd "$(dirname "$0")/../terraform"
 

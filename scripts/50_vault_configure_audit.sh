@@ -11,7 +11,9 @@ NC='\033[0m' # No Colour
 # Configuration
 NAMESPACE="${NAMESPACE:-vault-stack}"
 VAULT_POD="${VAULT_POD:-vault-stack-0}"
-VAULT_AUDIT_LOG_PATH="$(pwd)/vault-audit-logs"
+# Use /hosthome mount point that will be set up via minikube mount
+VAULT_AUDIT_LOG_PATH="/hosthome/vault-audit-logs"
+VAULT_AUDIT_LOG_PATH_HOST="$(pwd)/vault-audit-logs"
 
 # Load Vault token from .env
 if [ -f ".env" ]; then
@@ -47,7 +49,7 @@ echo
 echo -e "${BLUE}Setting up audit log collection from Vault pod...${NC}"
 
 # Create local directory for audit logs if it doesn't exist
-mkdir -p "$VAULT_AUDIT_LOG_PATH"
+mkdir -p "$VAULT_AUDIT_LOG_PATH_HOST"
 
 echo -e "${YELLOW}Note: Audit logs will be collected via kubectl cp from Vault pod${NC}"
 echo -e "${YELLOW}      Location: ${VAULT_POD}:/tmp/vault_audit.log -> ${VAULT_AUDIT_LOG_PATH}/${NC}"
@@ -242,19 +244,28 @@ spec:
         spec:
           serviceAccountName: vault-log-sync
           restartPolicy: OnFailure
+          securityContext:
+            runAsUser: 0
+            fsGroup: 0
           containers:
           - name: sync
             image: bitnami/kubectl:latest
+            securityContext:
+              runAsUser: 0
             command:
             - /bin/bash
             - -c
             - |
               set -e
-              # Copy log from Vault pod to a temp location in the sync pod
-              kubectl cp ${NAMESPACE}/${VAULT_POD}:/tmp/vault_audit.log /tmp/vault_audit.log 2>/dev/null || true
+              # Copy log from Vault pod to the hostPath-mounted directory
+              kubectl cp ${NAMESPACE}/${VAULT_POD}:/tmp/vault_audit.log /sync/vault_audit.log 2>&1 || true
 
-              # Note: This copies to pod storage. For host access, mount hostPath volume
-              echo "Log synced at \$(date)"
+              if [ -f /sync/vault_audit.log ]; then
+                chmod 644 /sync/vault_audit.log
+                echo "Log synced at \$(date) - \$(wc -l < /sync/vault_audit.log) lines"
+              else
+                echo "No audit log file yet at \$(date)"
+              fi
             volumeMounts:
             - name: audit-logs
               mountPath: /sync
@@ -270,8 +281,8 @@ echo
 
 # Initial log sync
 echo -e "${BLUE}Performing initial log sync...${NC}"
-mkdir -p "$VAULT_AUDIT_LOG_PATH"
-kubectl cp "${NAMESPACE}/${VAULT_POD}:/tmp/vault_audit.log" "${VAULT_AUDIT_LOG_PATH}/vault_audit.log" 2>/dev/null || echo -e "${YELLOW}No audit log file yet (will be created on first Vault operation)${NC}"
+mkdir -p "$VAULT_AUDIT_LOG_PATH_HOST"
+kubectl cp "${NAMESPACE}/${VAULT_POD}:/tmp/vault_audit.log" "${VAULT_AUDIT_LOG_PATH_HOST}/vault_audit.log" 2>/dev/null || echo -e "${YELLOW}No audit log file yet (will be created on first Vault operation)${NC}"
 echo -e "${GREEN}✓ Initial sync complete${NC}"
 echo
 

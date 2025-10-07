@@ -11,6 +11,11 @@ NAMESPACE="${NAMESPACE:-vault-stack}"
 echo -e "${BLUE}Stopping port-forwards...${NC}"
 pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 
+# Stop minikube mount
+echo -e "${BLUE}Stopping minikube mount...${NC}"
+pkill -f "minikube mount" 2>/dev/null || true
+echo -e "${GREEN}✓ Minikube mount stopped${NC}"
+
 # Destroy ELK stack (podman) if it exists
 echo -e "${BLUE}Checking for ELK stack (podman)...${NC}"
 cd "$(dirname "$0")/../.."
@@ -43,6 +48,24 @@ if [ ! -f "terraform.tfstate" ] && [ ! -f "terraform.tfstate.backup" ]; then
   if [ -f vault-init.json ]; then
     rm -f vault-init.json
     echo -e "${GREEN}Removed vault-init.json${NC}"
+  fi
+
+  # Remove vault audit logs directory
+  if [ -d vault-audit-logs ]; then
+    rm -rf vault-audit-logs
+    echo -e "${GREEN}Removed vault-audit-logs/${NC}"
+  fi
+
+  # Remove fleet tokens directory
+  if [ -d fleet-tokens ]; then
+    rm -rf fleet-tokens
+    echo -e "${GREEN}Removed fleet-tokens/${NC}"
+  fi
+
+  # Remove certificates directory
+  if [ -d certs ]; then
+    rm -rf certs
+    echo -e "${GREEN}Removed certs/${NC}"
   fi
 
   echo -e "${GREEN}Stack already destroyed${NC}"
