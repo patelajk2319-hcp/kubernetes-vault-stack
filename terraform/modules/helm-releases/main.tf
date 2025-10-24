@@ -98,3 +98,28 @@ resource "helm_release" "promtail" {
     helm_release.loki # Promtail depends on Loki being available
   ]
 }
+
+# ------------------------------------------------------------------------------
+# Vault Secrets Operator
+# ------------------------------------------------------------------------------
+
+# Vault Secrets Operator - Synchronises Vault secrets to Kubernetes secrets
+# Official chart from HashiCorp Helm repository
+resource "helm_release" "vault_secrets_operator" {
+  name             = "vault-secrets-operator"
+  repository       = "https://helm.releases.hashicorp.com"
+  chart            = "vault-secrets-operator"
+  version          = "0.9.0"
+  namespace        = var.namespace
+  create_namespace = false
+  timeout          = 300
+  wait             = true
+
+  values = [
+    file("${path.root}/../helm-chart/vault-stack/values/vso/vault-secrets-operator.yaml")
+  ]
+
+  depends_on = [
+    helm_release.vault
+  ]
+}

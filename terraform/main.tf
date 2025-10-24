@@ -61,3 +61,20 @@ module "kubernetes_services" {
 
   depends_on = [module.helm_releases]
 }
+
+# Configure Vault for VSO (Vault Secrets Operator)
+# This module is optional and can be applied after Vault is initialised and unsealed
+# Run: terraform apply -target=module.vault_vso_config
+module "vault_vso_config" {
+  source = "./modules/vault-vso-config"
+
+  kubernetes_host      = "https://kubernetes.default.svc.cluster.local"
+  kubernetes_namespace = var.namespace
+  vso_service_accounts = ["default", "vault-secrets-operator-controller-manager"]
+  disable_local_ca_jwt = false
+
+  # This module requires Vault to be initialised and unsealed
+  # It will fail if run during initial deployment
+  # Use: terraform apply -target=module.vault_vso_config
+  depends_on = [module.helm_releases]
+}

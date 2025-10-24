@@ -26,6 +26,10 @@ terraform {
       source  = "hashicorp/time"
       version = "~> 0.9"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -41,4 +45,24 @@ provider "helm" {
 
 provider "kubectl" {
   config_path = "~/.kube/config"
+}
+
+provider "vault" {
+  # Vault address - defaults to http://localhost:8200
+  # Override with VAULT_ADDR environment variable
+  address = "http://localhost:8200"
+
+  # Skip TLS verification for local development
+  # Set to false in production with proper TLS certificates
+  skip_tls_verify = true
+
+  # Token authentication - set VAULT_TOKEN environment variable
+  # The token should have permissions to:
+  # - Enable and configure auth methods
+  # - Create and manage policies
+  # - Create and manage secrets engines
+  # - Create auth roles
+
+  # Note: This provider is only used for the vault_vso_config module
+  # which should be applied AFTER Vault is initialised and unsealed
 }
