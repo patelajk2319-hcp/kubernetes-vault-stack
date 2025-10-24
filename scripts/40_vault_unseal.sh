@@ -5,11 +5,11 @@
 
 set -e
 
-# Source centralized color configuration
+# Source centralised colour configuration
 source "$(dirname "$0")/lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
-VAULT_POD="${VAULT_POD:-vault-0}"
+VAULT_POD="${VAULT_POD:-vault-stack-0}"
 
 # Auto-detect Vault pod name if default doesn't exist
 if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then

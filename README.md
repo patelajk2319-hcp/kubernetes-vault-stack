@@ -24,23 +24,23 @@ git clone <repository-url>
 cd kubernetes-vault-stack
 ```
 
-### 2. Configure Vault License
+### 2. Configure Vault Licence
 
-Add your Vault Enterprise license:
+Add your Vault Enterprise licence:
 
 ```bash
-# Copy the license template
+# Copy the licence template
 cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/license.lic
 
-# Edit the license file and add your actual license key
-# Replace YOUR_VAULT_ENTERPRISE_LICENSE_KEY_HERE with your actual license
+# Edit the licence file and add your actual licence key
+# Replace YOUR_VAULT_ENTERPRISE_LICENSE_KEY_HERE with your actual licence
 ```
 
 ### 3. Deploy
 
 ```bash
 task up        # Deploy infrastructure
-task init      # Initialize Vault
+task init      # Initialise Vault
 task unseal    # Unseal Vault and start port forwarding
 ```
 
@@ -80,7 +80,7 @@ task info
 ```bash
 task              # List all available commands
 task up           # Deploy the entire stack (Terraform)
-task init         # Initialize Vault
+task init         # Initialise Vault
 task unseal       # Unseal Vault and start port forwarding
 task status       # Show status of all components
 task info         # Show access information and credentials
@@ -235,7 +235,7 @@ The `.env` file is automatically created by Terraform during `task up` and conta
 # Vault address - required for Vault CLI commands
 export VAULT_ADDR=http://127.0.0.1:8200
 
-# Vault Enterprise license - read from licenses/vault-enterprise/license.lic
+# Vault Enterprise licence - read from licenses/vault-enterprise/license.lic
 export VAULT_LICENSE=<auto-populated-from-license-file>
 
 # Vault root token - dynamically generated during 'task init'

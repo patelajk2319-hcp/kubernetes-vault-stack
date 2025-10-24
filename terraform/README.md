@@ -63,7 +63,7 @@ cd terraform && terraform plan
 ```bash
 cd terraform
 
-# Initialize Terraform
+# Initialise Terraform
 terraform init
 
 # Review changes
@@ -182,6 +182,6 @@ The configuration includes a 30-second wait after ECK operator deployment. If El
 
 ## Next Steps After Deployment
 
-1. Initialize Vault: `task init`
+1. Initialise Vault: `task init`
 2. Unseal Vault: `task unseal`
 3. View access info: `task info`

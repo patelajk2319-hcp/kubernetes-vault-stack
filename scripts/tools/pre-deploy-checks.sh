@@ -2,7 +2,7 @@
 
 # Pre-deployment checks - verify required tools are installed
 
-# Source centralized color configuration
+# Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
 
 echo -e "${BLUE}Checking prerequisites...${NC}"
@@ -23,13 +23,13 @@ kubectl cluster-info >/dev/null 2>&1 || {
   exit 1
 }
 
-# Check for Vault Enterprise license file
+# Check for Vault Enterprise licence file
 LICENSE_FILE="licenses/vault-enterprise/license.lic"
 if [ ! -f "$LICENSE_FILE" ]; then
-  echo -e "${RED}Error: Vault license file not found${NC}"
-  echo -e "${YELLOW}Please create the license file and add your Vault Enterprise license:${NC}"
+  echo -e "${RED}Error: Vault licence file not found${NC}"
+  echo -e "${YELLOW}Please create the licence file and add your Vault Enterprise licence:${NC}"
   echo "  1. Copy the example: cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/license.lic"
-  echo "  2. Edit licenses/vault-enterprise/license.lic and add your actual license key"
+  echo "  2. Edit licenses/vault-enterprise/license.lic and add your actual licence key"
   exit 1
 fi
 

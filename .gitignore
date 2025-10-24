@@ -5,6 +5,12 @@ vault-init.json
 # Certificates
 certs/
 
+# Vault audit logs (synced from minikube for ELK)
+vault-audit-logs/
+
+# ELK Fleet tokens
+fleet-tokens/
+
 # Terraform
 .terraform/
 *.tfstate
@@ -25,9 +31,8 @@ helm-chart/**/*.tgz
 .DS_Store
 Thumbs.db
 
+# Environment files
 **/.env
-.idea/
-vault-init.json
 
 # Ignore user-specific dot folders
 .claude

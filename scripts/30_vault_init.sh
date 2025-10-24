@@ -6,11 +6,11 @@
 
 set -e
 
-# Source centralized color configuration
+# Source centralised colour configuration
 source "$(dirname "$0")/lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
-VAULT_POD="${VAULT_POD:-vault-0}"
+VAULT_POD="${VAULT_POD:-vault-stack-0}"
 
 # Auto-detect Vault pod name if default doesn't exist
 if ! kubectl get pod -n "$NAMESPACE" "$VAULT_POD" &>/dev/null; then
@@ -53,5 +53,12 @@ ROOT_TOKEN=$(cat vault-init.json | jq -r '.root_token')
 sed -i.bak "s|^export VAULT_TOKEN=.*|export VAULT_TOKEN=$ROOT_TOKEN|" .env
 rm -f .env.bak
 
+# Unseal Vault
+echo -e "${BLUE}Unsealing Vault${NC}"
+UNSEAL_KEY=$(cat vault-init.json | jq -r '.unseal_keys_b64[0]')
+kubectl exec -n "$NAMESPACE" "$VAULT_POD" -- vault operator unseal "$UNSEAL_KEY" >/dev/null
+
 echo -e "${GREEN}Vault initialised!${NC}"
 echo -e "${GREEN}Vault token saved to .env${NC}"
+echo
+echo -e "${YELLOW}Note: Run 'task audit' to configure audit logging and ELK integration${NC}"
