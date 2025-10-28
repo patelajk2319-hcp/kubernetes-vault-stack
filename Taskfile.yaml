@@ -41,81 +41,31 @@ tasks:
     cmds:
       - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/60_vault_sample_data.sh
 
-  # VSO Demo: Configure Vault for VSO
-  vso-configure:
-    desc: Configure Vault for Vault Secrets Operator (Terraform)
+  # VSO: Set up Vault Secrets Operator demo
+  vso:
+    desc: Deploy and configure Vault Secrets Operator (run after init & unseal)
     cmds:
-      - cd terraform && terraform apply -target=module.vault_vso_config -auto-approve
+      - NAMESPACE={{.NAMESPACE}} ./scripts/vso/00_deploy_vso.sh
 
-  # VSO Demo: Deploy VSO custom resources
-  vso-deploy:
-    desc: Deploy VSO custom resources and demo application
-    cmds:
-      - kubectl apply -f k8s/vso-demo/ -n {{.NAMESPACE}}
-
-  # VSO Demo: Check VSO status
-  vso-status:
-    desc: Check status of VSO resources
-    cmds:
-      - echo "=== VaultConnection Status ==="
-      - kubectl get vaultconnection -n {{.NAMESPACE}}
-      - echo ""
-      - echo "=== VaultAuth Status ==="
-      - kubectl get vaultauth -n {{.NAMESPACE}}
-      - echo ""
-      - echo "=== VaultStaticSecret Status ==="
-      - kubectl get vaultstaticsecret -n {{.NAMESPACE}}
-      - echo ""
-      - echo "=== Synced Kubernetes Secrets ==="
-      - kubectl get secrets -n {{.NAMESPACE}} | grep -E "webapp-secret|database-secret" || true
-      - echo ""
-      - echo "=== Demo Application Status ==="
-      - kubectl get deployment webapp-deployment -n {{.NAMESPACE}}
-      - kubectl get pods -l app=webapp -n {{.NAMESPACE}}
-
-  # VSO Demo: Access webapp
+  # VSO: Access demo webapp
   vso-webapp:
-    desc: Port-forward to access VSO demo webapp
+    desc: Access VSO demo webapp at http://localhost:8080
     cmds:
-      - echo "Accessing VSO demo webapp at http://localhost:8080"
-      - echo "Press Ctrl+C to stop port-forwarding"
+      - echo "Opening VSO demo at http://localhost:8080"
+      - echo "Press Ctrl+C to stop"
       - kubectl port-forward -n {{.NAMESPACE}} svc/webapp-service 8080:80
 
-  # VSO Demo: Update secrets in Vault
+  # VSO: Update secrets to test synchronisation
   vso-update:
-    desc: Update secrets in Vault (to test VSO synchronisation)
+    desc: Update secrets in Vault to test VSO sync
     cmds:
       - |
-        echo "Updating webapp secret in Vault..."
+        echo "Updating secrets in Vault..."
         kubectl exec -n {{.NAMESPACE}} {{.VAULT_POD}} -- vault kv put kvv2/webapp/config \
-          username="updated-user-$(date +%s)" \
-          password="updated-pass-$(date +%s)"
-        echo ""
+          username="user-$(date +%s)" \
+          password="pass-$(date +%s)"
         echo "Secret updated! VSO will sync within 30 seconds."
-        echo "Run 'task vso-webapp' and refresh the page to see changes."
-
-  # VSO Demo: Cleanup
-  vso-clean:
-    desc: Remove VSO demo resources
-    cmds:
-      - kubectl delete -f k8s/vso-demo/ -n {{.NAMESPACE}} --ignore-not-found=true
-
-  # VSO Demo: Full workflow
-  vso-demo:
-    desc: Run complete VSO demo (configure Vault, deploy resources, show status)
-    cmds:
-      - task: vso-configure
-      - sleep 5
-      - task: vso-deploy
-      - sleep 10
-      - task: vso-status
-      - echo ""
-      - echo "✅ VSO Demo deployed successfully!"
-      - echo ""
-      - echo "Next steps:"
-      - echo "  1. Run 'task vso-webapp' to access the demo application"
-      - echo "  2. Run 'task vso-update' to update secrets and watch them sync"
-      - echo "  3. Run 'task vso-status' to check synchronisation status"
+        echo "Refresh http://localhost:8080 to see changes"
 
   # Clean/destroy everything (Terraform)
   clean:

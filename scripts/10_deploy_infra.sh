@@ -15,8 +15,8 @@ cd "$(dirname "$0")/.."
 ./scripts/tools/setup-minikube-mount.sh
 echo ""
 
-# Change to terraform directory
-cd "$(dirname "$0")/../terraform"
+# Change to tf-core directory
+cd "$(dirname "$0")/../tf-core"
 
 # Initialise Terraform
 echo -e "${BLUE}Initialising Terraform...${NC}"

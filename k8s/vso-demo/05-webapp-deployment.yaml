@@ -117,7 +117,7 @@ data:
             return 200 '<!DOCTYPE html>
     <html>
     <head>
-        <title>VSO Demo Application</title>
+        <title>VSO Application</title>
         <style>
             body {
                 font-family: Arial, sans-serif;

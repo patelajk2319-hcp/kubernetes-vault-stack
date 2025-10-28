@@ -7,7 +7,33 @@ source "$(dirname "$0")/../lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
 
-# Stop port-forwards
+# Remove VSO demo resources if they exist (before stopping port-forwards)
+# This must be done while Vault is still accessible
+echo -e "${BLUE}Checking for VSO demo resources...${NC}"
+cd "$(dirname "$0")/../.."
+if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+  if kubectl get vaultstaticsecret -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Found VSO demo resources, removing via Terraform...${NC}"
+    cd tf-vso
+    if [ -f "terraform.tfstate" ] || [ -f "terraform.tfstate.backup" ]; then
+      terraform init -upgrade > /dev/null 2>&1 || true
+      source ../.env 2>/dev/null || true
+      terraform destroy -auto-approve 2>/dev/null || true
+      rm -f terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl
+      rm -rf .terraform/
+      echo -e "${GREEN}✓ VSO demo resources removed${NC}"
+    else
+      echo -e "${GREEN}✓ No VSO Terraform state found${NC}"
+    fi
+    cd ..
+  else
+    echo -e "${GREEN}✓ No VSO demo resources found${NC}"
+  fi
+else
+  echo -e "${GREEN}✓ Namespace does not exist${NC}"
+fi
+
+# Stop port-forwards (after VSO cleanup but before Terraform destroy)
 echo -e "${BLUE}Stopping port-forwards...${NC}"
 pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 
@@ -29,7 +55,7 @@ fi
 
 # Run Terraform destroy
 echo -e "${YELLOW}Running Terraform Destroy...${NC}"
-cd "$(dirname "$0")/../../terraform"
+cd "$(dirname "$0")/../../tf-core"
 
 # Check if state file exists (indicates resources were deployed)
 if [ ! -f "terraform.tfstate" ] && [ ! -f "terraform.tfstate.backup" ]; then

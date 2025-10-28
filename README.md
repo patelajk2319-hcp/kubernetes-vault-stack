@@ -2,6 +2,7 @@
 
 This stack deploys a complete Vault Enterprise environment on Kubernetes with:
 - **Security**: Vault Enterprise with Raft storage backend
+- **Secret Management**: Vault Secrets Operator (VSO) for native Kubernetes secret synchronisation
 - **Monitoring**: Grafana, Prometheus, Loki, Promtail
 - **Data Services**: Elasticsearch, Kibana (via ECK operator)
 - **Observability**: Unified logging and metrics collection
@@ -85,6 +86,9 @@ task unseal       # Unseal Vault and start port forwarding
 task status       # Show status of all components
 task info         # Show access information and credentials
 task logs         # View logs for a service (usage: task logs -- <service-name>)
+task vso          # Configure and deploy Vault Secrets Operator demo
+task vso-webapp   # Access VSO demo webapp
+task vso-update   # Update secrets to test VSO synchronisation
 task clean        # Destroy the entire stack (Terraform)
 task rm           # Alias for clean
 ```
@@ -163,6 +167,19 @@ task logs -- kibana
 task logs
 ```
 
+### Vault Secrets Operator (VSO) Demo
+
+```bash
+# After deploying and unsealing Vault, run the VSO task
+task vso
+
+# Access demo webapp
+task vso-webapp  # http://localhost:8080
+
+# Update secrets to test synchronisation
+task vso-update
+```
+
 ### Clean and Redeploy
 
 ```bash
@@ -179,7 +196,7 @@ task unseal
 
 ### Terraform Variables
 
-Infrastructure configuration is managed via Terraform variables in `terraform/variables.tf`:
+Infrastructure configuration is managed via Terraform variables in `tf-core/variables.tf`:
 
 ```hcl
 namespace              = "vault-stack"           # Kubernetes namespace
@@ -196,7 +213,7 @@ namespace = "my-vault"
 cert_validity_hours = 17520  # 2 years
 ```
 
-See `terraform/README.md` for full documentation.
+For advanced Terraform configuration, see the `tf-core/` directory.
 
 ### Helm Values
 
@@ -337,7 +354,7 @@ kubectl config get-contexts
 
 1. Add official Helm chart dependency to `helm-chart/vault-stack/Chart.yaml`
 2. Create a new values file in `helm-chart/vault-stack/values/<service>/<service>.yaml`
-3. Update Terraform module in `terraform/modules/helm-releases/main.tf` to include new values file
-4. Add NodePort service in `terraform/main.tf` if external access is needed
+3. Update Terraform module in `tf-core/modules/helm-releases/main.tf` to include new values file
+4. Add NodePort service in `tf-core/main.tf` if external access is needed
 5. Update `task port-forward` in `Taskfile.yaml` if using port forwarding
 6. Update `task info` in `scripts/tools/info.sh` for credential display
