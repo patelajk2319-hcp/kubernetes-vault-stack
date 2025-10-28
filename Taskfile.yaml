@@ -67,6 +67,41 @@ tasks:
         echo "Secret updated! VSO will sync within 30 seconds."
         echo "Refresh http://localhost:8080 to see changes"
 
+  # ELK Dynamic: Set up Elasticsearch dynamic credentials with Vault
+  elk-dynamic:
+    desc: Deploy Elasticsearch dynamic credentials demo (run after init & unseal)
+    aliases: [dynamic]
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/elk/20_dynamic_secrets.sh
+
+  # ELK Dynamic: Access demo webapp
+  elk-dynamic-webapp:
+    desc: Access Elasticsearch dynamic credentials demo at http://localhost:8090
+    cmds:
+      - echo "Opening Elasticsearch dynamic credentials demo at http://localhost:8090"
+      - echo "Watch credentials rotate automatically every 60 seconds"
+      - echo "Press Ctrl+C to stop"
+      - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
+
+  # ELK Dynamic: Test credential rotation
+  elk-dynamic-test:
+    desc: Force credential rotation by restarting the demo pod
+    cmds:
+      - |
+        echo "Forcing credential rotation..."
+        kubectl delete pod -n {{.NAMESPACE}} -l app=elk-dynamic-webapp
+        echo "Pod restarting with new dynamic credentials..."
+        echo "Wait a few seconds then check http://localhost:8090"
+
+  # ELK Dynamic: View current dynamic credentials
+  elk-dynamic-creds:
+    desc: View current dynamic Elasticsearch credentials
+    cmds:
+      - |
+        echo "Current dynamic Elasticsearch credentials:"
+        kubectl get secret elasticsearch-dynamic-secret -n {{.NAMESPACE}} -o jsonpath='{.data.username}' | base64 -d && echo
+        echo "Password: [hidden - check Kubernetes secret]"
+
   # Clean/destroy everything (Terraform)
   clean:
     desc: Destroy the entire stack

@@ -7,10 +7,33 @@ source "$(dirname "$0")/../lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
 
+# Remove dynamic ELK credentials resources if they exist (before stopping port-forwards)
+# This must be done while Vault is still accessible
+echo -e "${BLUE}Checking for dynamic ELK credentials resources...${NC}"
+cd "$(dirname "$0")/../.."
+if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+  if kubectl get vaultdynamicsecret -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Found dynamic ELK credentials resources, removing via Terraform...${NC}"
+    cd tf-dynamic-elk
+    if [ -f "terraform.tfstate" ] || [ -f "terraform.tfstate.backup" ]; then
+      terraform init -upgrade > /dev/null 2>&1 || true
+      source ../.env 2>/dev/null || true
+      terraform destroy -auto-approve 2>/dev/null || true
+      rm -f terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl
+      rm -rf .terraform/
+      echo -e "${GREEN}✓ Dynamic ELK credentials resources removed${NC}"
+    else
+      echo -e "${GREEN}✓ No dynamic ELK Terraform state found${NC}"
+    fi
+    cd ..
+  else
+    echo -e "${GREEN}✓ No dynamic ELK credentials resources found${NC}"
+  fi
+fi
+
 # Remove VSO demo resources if they exist (before stopping port-forwards)
 # This must be done while Vault is still accessible
 echo -e "${BLUE}Checking for VSO demo resources...${NC}"
-cd "$(dirname "$0")/../.."
 if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
   if kubectl get vaultstaticsecret -n "${NAMESPACE}" >/dev/null 2>&1; then
     echo -e "${YELLOW}Found VSO demo resources, removing via Terraform...${NC}"

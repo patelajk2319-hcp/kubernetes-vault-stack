@@ -79,18 +79,22 @@ task info
 ## Available Commands
 
 ```bash
-task              # List all available commands
-task up           # Deploy the entire stack (Terraform)
-task init         # Initialise Vault
-task unseal       # Unseal Vault and start port forwarding
-task status       # Show status of all components
-task info         # Show access information and credentials
-task logs         # View logs for a service (usage: task logs -- <service-name>)
-task vso          # Configure and deploy Vault Secrets Operator demo
-task vso-webapp   # Access VSO demo webapp
-task vso-update   # Update secrets to test VSO synchronisation
-task clean        # Destroy the entire stack (Terraform)
-task rm           # Alias for clean
+task                    # List all available commands
+task up                 # Deploy the entire stack (Terraform)
+task init               # Initialise Vault
+task unseal             # Unseal Vault and start port forwarding
+task status             # Show status of all components
+task info               # Show access information and credentials
+task logs               # View logs for a service (usage: task logs -- <service-name>)
+task vso                # Configure and deploy Vault Secrets Operator (static secrets)
+task vso-webapp         # Access VSO demo webapp
+task vso-update         # Update secrets to test VSO synchronisation
+task elk-dynamic        # Deploy Elasticsearch dynamic credentials demo (alias: dynamic)
+task elk-dynamic-webapp # Access Elasticsearch dynamic credentials demo
+task elk-dynamic-test   # Force credential rotation
+task elk-dynamic-creds  # View current dynamic credentials
+task clean              # Destroy the entire stack (Terraform)
+task rm                 # Alias for clean
 ```
 
 ## Accessing Services
@@ -167,7 +171,9 @@ task logs -- kibana
 task logs
 ```
 
-### Vault Secrets Operator (VSO) Demo
+### Vault Secrets Operator (VSO) - Static Secrets
+
+Demonstrates VSO synchronising static secrets from Vault to Kubernetes.
 
 ```bash
 # After deploying and unsealing Vault, run the VSO task
@@ -179,6 +185,31 @@ task vso-webapp  # http://localhost:8080
 # Update secrets to test synchronisation
 task vso-update
 ```
+
+### Elasticsearch Dynamic Credentials
+
+Demonstrates Vault's database secrets engine generating time-limited, automatically-rotated credentials for Elasticsearch.
+
+```bash
+# Deploy dynamic credentials demo
+task elk-dynamic  # or: task dynamic
+
+# Access demo webapp (shows live credential rotation)
+task elk-dynamic-webapp  # http://localhost:8090
+
+# Force credential rotation (restart pod with new credentials)
+task elk-dynamic-test
+
+# View current credentials
+task elk-dynamic-creds
+```
+
+**Key Features:**
+- ✅ **Automatic generation** - Vault creates unique Elasticsearch users on-demand
+- ✅ **Time-limited** - Credentials expire after 5 minutes (configurable)
+- ✅ **Auto-rotation** - New credentials generated every 60 seconds
+- ✅ **Auto-revocation** - Old credentials automatically deleted by Vault
+- ✅ **Zero manual intervention** - No password rotation scripts needed
 
 ### Clean and Redeploy
 

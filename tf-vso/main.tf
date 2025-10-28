@@ -6,7 +6,7 @@ resource "vault_mount" "kvv2" {
   options = {
     version = "2"
   }
-  description = "KV v2 secrets engine for VSO demo"
+  description = "KV v2 secrets engine for VSO"
 }
 
 # Create webapp secret
@@ -187,7 +187,7 @@ YAML
 
 # Deploy webapp demonstration application
 resource "kubectl_manifest" "webapp_deployment" {
-  yaml_body = file("${path.module}/../k8s/vso-demo/05-webapp-deployment-simple.yaml")
+  yaml_body = file("${path.module}/../k8s/vso-demo/00_webapp-deployment-simple.yaml")
 
   depends_on = [
     kubectl_manifest.webapp_secret,
