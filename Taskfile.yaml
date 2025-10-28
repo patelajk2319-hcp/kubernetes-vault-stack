@@ -67,16 +67,20 @@ tasks:
         echo "Secret updated! VSO will sync within 30 seconds."
         echo "Refresh http://localhost:8080 to see changes"
 
-  # ELK Dynamic: Set up Elasticsearch dynamic credentials with Vault
-  elk-dynamic:
+  # ELK Dynamic Credentials Namespace
+  elk:
+    desc: ELK dynamic credentials - Show available commands
+    cmds:
+      - task --list | grep "elk:"
+
+  elk:dynamic:
     desc: Deploy Elasticsearch dynamic credentials demo (run after init & unseal)
     aliases: [dynamic]
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/elk/20_dynamic_secrets.sh
 
-  # ELK Dynamic: Access demo webapp
-  elk-dynamic-webapp:
-    desc: Access Elasticsearch dynamic credentials demo at http://localhost:8090
+  elk:webapp:
+    desc: Access demo webapp at http://localhost:8090
     aliases: [web]
     cmds:
       - echo "Opening Elasticsearch dynamic credentials demo at http://localhost:8090"
@@ -84,9 +88,9 @@ tasks:
       - echo "Press Ctrl+C to stop"
       - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
 
-  # ELK Dynamic: Test credential rotation
-  elk-dynamic-test:
+  elk:rotate:
     desc: Force credential rotation by restarting the demo pod
+    aliases: [rotate]
     cmds:
       - |
         echo "Forcing credential rotation..."
@@ -94,9 +98,9 @@ tasks:
         echo "Pod restarting with new dynamic credentials..."
         echo "Wait a few seconds then check http://localhost:8090"
 
-  # ELK Dynamic: View current dynamic credentials
-  elk-dynamic-creds:
+  elk:creds:
     desc: View current dynamic Elasticsearch credentials
+    aliases: [view]
     cmds:
       - |
         echo "Current dynamic Elasticsearch credentials:"
