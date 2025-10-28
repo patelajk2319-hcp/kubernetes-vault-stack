@@ -51,9 +51,15 @@ resource "vault_database_secret_backend_role" "elasticsearch" {
             privileges = ["read", "write", "create_index", "delete_index", "view_index_metadata", "monitor"]
           }
         ]
-        applications = []
-        cluster      = ["monitor"]
-        run_as       = []
+        applications = [
+          {
+            application = "kibana-.kibana"
+            privileges  = ["all"]
+            resources   = ["*"]
+          }
+        ]
+        cluster = ["monitor", "manage_index_templates", "monitor_ml", "monitor_watcher", "monitor_transform"]
+        run_as  = []
       }
     })
   ]
