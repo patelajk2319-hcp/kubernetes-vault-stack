@@ -77,9 +77,10 @@ tasks:
   # ELK Dynamic: Access demo webapp
   elk-dynamic-webapp:
     desc: Access Elasticsearch dynamic credentials demo at http://localhost:8090
+    aliases: [web]
     cmds:
       - echo "Opening Elasticsearch dynamic credentials demo at http://localhost:8090"
-      - echo "Watch credentials rotate automatically every 60 seconds"
+      - echo "Lease renewed every 60s | Credentials rotate every 5 minutes"
       - echo "Press Ctrl+C to stop"
       - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
 

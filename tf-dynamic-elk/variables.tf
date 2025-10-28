@@ -44,5 +44,5 @@ variable "default_ttl" {
 variable "max_ttl" {
   description = "Maximum TTL for dynamic credentials"
   type        = number
-  default     = 3600 # 1 hour
+  default     = 300 # 5 Minutes
 }

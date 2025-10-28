@@ -9,6 +9,13 @@ kubectl exec -n vault-stack -it vault-stack-0 -- wget -qO- https://host.minikube
 
 kubectl exec -n vault-stack -it vault-stack-0 -- nslookup host.minikube.internal
 
+  # Get credentials
+  USERNAME=$(kubectl get secret elasticsearch-dynamic-secret -n vault-stack -o jsonpath='{.data.username}' | base64 -d)
+  PASSWORD=$(kubectl get secret elasticsearch-dynamic-secret -n vault-stack -o jsonpath='{.data.password}' | base64 -d)
+
+  # curl to elk usng
+  curl -k -u "$USERNAME:$PASSWORD" https://localhost:9200/_cluster/health
+
 netstat -rn
 
 vault kv get kvv2/webapp/config

@@ -179,10 +179,16 @@ spec:
                               <span class="label">Password:</span> <span class="value">{es_password[:20]}...</span>
                           </div>
                           <div class="credential-item">
-                              <span class="label">TTL:</span> <span class="value">5 minutes (default)</span>
+                              <span class="label">Default TTL:</span> <span class="value">5 minutes</span>
                           </div>
                           <div class="credential-item">
-                              <span class="label">Auto-rotation:</span> <span class="value">Every 60 seconds</span>
+                              <span class="label">Max TTL:</span> <span class="value">5 minutes</span>
+                          </div>
+                          <div class="credential-item">
+                              <span class="label">Lease Renewal:</span> <span class="value">Every 60 seconds</span>
+                          </div>
+                          <div class="credential-item">
+                              <span class="label">Credential Rotation:</span> <span class="value">Up to 5 minutes (when max TTL reached)</span>
                           </div>
                       </div>
 
@@ -209,14 +215,20 @@ spec:
                           </ol>
                       </div>
 
-                      <h2>🧪 Testing Dynamic Rotation</h2>
+                      <h2>🧪 Understanding Credential Lifecycle</h2>
                       <div class="info">
-                          <strong>Watch credentials rotate automatically:</strong><br>
+                          <strong>Lease Renewal (every 60 seconds):</strong><br>
+                          • Same username/password continues working<br>
+                          • Lease duration refreshed to 5 minutes<br>
+                          • No pod restart required<br>
+                          <br>
+                          <strong>Credential Rotation (every 5 minutes):</strong><br>
                           1. Note the current username above<br>
-                          2. Wait approximately 60 seconds<br>
-                          3. Page will auto-refresh (or refresh manually)<br>
-                          4. Observe the new username (Vault generates unique names)<br>
-                          5. Previous credentials are now revoked and invalid
+                          2. Wait approximately 5 minutes (max TTL reached)<br>
+                          3. Vault creates NEW username/password<br>
+                          4. Pod automatically restarts with new credentials<br>
+                          5. Previous credentials are revoked by Vault<br>
+                          6. Page shows the new username after restart
                       </div>
 
                       <div class="success">
