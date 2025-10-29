@@ -17,70 +17,96 @@ echo ""
 
 cd "$PROJECT_ROOT"
 
+# Check if Vault is accessible
+VAULT_ACCESSIBLE=false
+source .env 2>/dev/null || true
+if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
+  if vault status >/dev/null 2>&1; then
+    VAULT_ACCESSIBLE=true
+    echo -e "${GREEN}✓ Vault is accessible${NC}"
+  else
+    echo -e "${YELLOW}⚠ Vault is not accessible - will skip Terraform destroy for VSO modules${NC}"
+  fi
+fi
+
 # 1. Destroy dynamic ELK credentials demo
 if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying dynamic ELK credentials...${NC}"
-  cd tf-dynamic-elk
 
-  # Source Vault credentials
-  source ../.env 2>/dev/null || true
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-dynamic-elk
 
-  # Force disable database mount to bypass lease revocation issues
-  if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
+    # Force disable database mount to bypass lease revocation issues
     echo -e "${YELLOW}Force disabling database mount (bypassing lease revocation)...${NC}"
     vault secrets disable database 2>/dev/null || true
     echo -e "${GREEN}✓ Database mount disabled${NC}"
-  fi
 
-  echo -e "${YELLOW}Initialising Terraform...${NC}"
-  terraform init -upgrade
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
 
-  # Remove database mount from state since we manually disabled it
-  echo -e "${YELLOW}Removing database mount from Terraform state...${NC}"
-  terraform state rm vault_mount.database 2>/dev/null || true
+    # Remove database mount from state since we manually disabled it
+    echo -e "${YELLOW}Removing database mount from Terraform state...${NC}"
+    terraform state rm vault_mount.database 2>/dev/null || true
 
-  echo -e "${YELLOW}Running terraform destroy...${NC}"
-  if terraform destroy -auto-approve; then
-    echo -e "${GREEN}✓ Dynamic ELK credentials destroyed${NC}"
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ Dynamic ELK credentials destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy dynamic ELK credentials${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
   else
-    echo -e "${RED}✗ Failed to destroy dynamic ELK credentials${NC}"
-    exit 1
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-dynamic-elk/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
   fi
-  cd "$PROJECT_ROOT"
 fi
 
 # 2. Destroy static ELK secrets demo
 if [ -f "tf-static-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying static ELK secrets...${NC}"
-  cd tf-static-elk
-  echo -e "${YELLOW}Initialising Terraform...${NC}"
-  terraform init -upgrade
-  source ../.env 2>/dev/null || true
-  echo -e "${YELLOW}Running terraform destroy...${NC}"
-  if terraform destroy -auto-approve; then
-    echo -e "${GREEN}✓ Static ELK secrets destroyed${NC}"
+
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-static-elk
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ Static ELK secrets destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy static ELK secrets${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
   else
-    echo -e "${RED}✗ Failed to destroy static ELK secrets${NC}"
-    exit 1
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-static-elk/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
   fi
-  cd "$PROJECT_ROOT"
 fi
 
 # 3. Destroy VSO infrastructure
 if [ -f "tf-vso/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying VSO infrastructure...${NC}"
-  cd tf-vso
-  echo -e "${YELLOW}Initialising Terraform...${NC}"
-  terraform init -upgrade
-  source ../.env 2>/dev/null || true
-  echo -e "${YELLOW}Running terraform destroy...${NC}"
-  if terraform destroy -auto-approve; then
-    echo -e "${GREEN}✓ VSO infrastructure destroyed${NC}"
+
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-vso
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ VSO infrastructure destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy VSO infrastructure${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
   else
-    echo -e "${RED}✗ Failed to destroy VSO infrastructure${NC}"
-    exit 1
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-vso/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
   fi
-  cd "$PROJECT_ROOT"
 fi
 
 echo ""
