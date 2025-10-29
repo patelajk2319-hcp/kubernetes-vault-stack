@@ -182,7 +182,7 @@ spec:
                               <span class="label">Username:</span> <span class="value">{es_username}</span>
                           </div>
                           <div class="credential-item">
-                              <span class="label">Password:</span> <span class="value">{es_password[:20]}...</span>
+                              <span class="label">Password:</span> <span class="value">{es_password}</span>
                           </div>
                           <div class="credential-item">
                               <span class="label">Default TTL:</span> <span class="value">5 minutes</span>

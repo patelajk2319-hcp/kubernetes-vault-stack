@@ -30,3 +30,5 @@ vault read database/creds/elasticsearch-role
 
 #view a dynamic role and the creation statement
 vault read database/roles/elasticsearch-role
+
+# U5qNW-cL0q2MNRRmoJRg / v-kubernetes-vaul-elasticsearch-r-QU9wsCFwAfDQQtmNtks5-1761663010

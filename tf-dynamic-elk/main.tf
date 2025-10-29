@@ -4,17 +4,7 @@
 
 # Database Secrets Engine Mount
 # Enables Vault's database secrets engine at the "database/" path
-#
-# The database secrets engine generates dynamic credentials with:
-# - Time-limited access (TTL-based expiration)
-# - Automatic credential rotation
-# - Automatic revocation when credentials expire
-# - Audit logging of all credential access
-#
-# This is the foundation for zero-trust credential management where:
-# - No long-lived credentials exist
-# - Each application gets unique, short-lived credentials
-# - Credentials are automatically rotated and revoked
+
 resource "vault_mount" "database" {
   path        = "database"
   type        = "database"
@@ -56,25 +46,6 @@ resource "vault_database_secret_backend_connection" "elasticsearch" {
 }
 
 # Elasticsearch Database Role
-# Defines the template for dynamically generated Elasticsearch users
-#
-# This role specifies:
-# - TTL settings (how long credentials are valid)
-# - Elasticsearch permissions (indices, cluster, applications, Kibana)
-# - What Vault will execute when creating/deleting users
-#
-# TTL Behaviour:
-# - default_ttl (5 minutes): Initial lifetime of credentials
-# - max_ttl (5 minutes): Maximum time credentials can be renewed
-# - VSO renews every 60 seconds until max_ttl is reached
-# - After max_ttl, VSO must request NEW credentials (rotation)
-#
-# Permissions granted to dynamic users:
-# - Full index operations (read, write, create, delete, monitor)
-# - Kibana UI access (all privileges on kibana-.kibana app)
-# - Cluster monitoring capabilities
-#
-# Use case: Demo webapp and manual Kibana login
 resource "vault_database_secret_backend_role" "elasticsearch" {
   backend = vault_mount.database.path
   name    = var.db_role_name
