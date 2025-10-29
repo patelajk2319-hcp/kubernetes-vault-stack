@@ -48,9 +48,15 @@ spec:
                       self.wfile.write(html.encode())
 
                   def generate_html(self):
-                      # Read dynamic credentials from environment
-                      es_username = os.getenv('ES_USERNAME', 'NOT_SET')
-                      es_password = os.getenv('ES_PASSWORD', 'NOT_SET')
+                      # Read dynamic credentials from mounted files (auto-updated!)
+                      try:
+                          with open('/vault/secrets/username', 'r') as f:
+                              es_username = f.read().strip()
+                          with open('/vault/secrets/password', 'r') as f:
+                              es_password = f.read().strip()
+                      except Exception as e:
+                          es_username = f'ERROR: {e}'
+                          es_password = 'ERROR'
 
                       # Try to connect to Elasticsearch
                       connection_status = "Not attempted"
@@ -259,18 +265,11 @@ spec:
 
           ports:
             - containerPort: 80
-          env:
-            # Dynamic Elasticsearch credentials injected from Vault
-            - name: ES_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: elasticsearch-dynamic-secret
-                  key: username
-            - name: ES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: elasticsearch-dynamic-secret
-                  key: password
+          volumeMounts:
+            # Mount dynamic credentials as files (auto-updated without pod restart)
+            - name: dynamic-creds
+              mountPath: /vault/secrets
+              readOnly: true
 
           resources:
             requests:
@@ -279,6 +278,12 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+
+      volumes:
+        # Mount the dynamic credentials secret as a volume
+        - name: dynamic-creds
+          secret:
+            secretName: elasticsearch-dynamic-secret
 
 ---
 # Service to expose the webapp
