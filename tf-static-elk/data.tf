@@ -3,7 +3,7 @@
 # ============================================================================
 
 # VSO Policy Document
-# Defines what secrets VSO can access in Vault
+# Defines what secrets VSO can access in Vault for static secrets
 #
 # This policy grants:
 # - Read access to kvv2/data/webapp/* (webapp configuration)
@@ -13,7 +13,7 @@
 # Policy path format for KV v2:
 # - Data: kvv2/data/<path> (actual secret values)
 # - Metadata: kvv2/metadata/<path> (versions, created time, etc.)
-data "vault_policy_document" "vso_policy" {
+data "vault_policy_document" "static_secrets_policy" {
   rule {
     path         = "kvv2/data/webapp/*"
     capabilities = ["read"]

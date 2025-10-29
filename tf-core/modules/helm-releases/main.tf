@@ -99,10 +99,6 @@ resource "helm_release" "promtail" {
   ]
 }
 
-# ------------------------------------------------------------------------------
-# Vault Secrets Operator
-# ------------------------------------------------------------------------------
-
 # Vault Secrets Operator - Synchronises Vault secrets to Kubernetes secrets
 # Official chart from HashiCorp Helm repository
 resource "helm_release" "vault_secrets_operator" {

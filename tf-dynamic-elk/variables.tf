@@ -4,12 +4,6 @@ variable "namespace" {
   default     = "vault-stack"
 }
 
-variable "vault_service_name" {
-  description = "Name of the Vault service in Kubernetes"
-  type        = string
-  default     = "vault-stack"
-}
-
 variable "elasticsearch_url" {
   description = "Elasticsearch URL (Podman on host machine)"
   type        = string

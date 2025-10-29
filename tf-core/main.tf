@@ -34,7 +34,6 @@ module "helm_releases" {
   source = "./modules/helm-releases"
 
   namespace         = var.namespace
-  vault_license_b64 = local.vault_license_b64
 
   depends_on = [
     kubernetes_namespace.vault_stack,

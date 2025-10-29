@@ -67,11 +67,17 @@ tasks:
         echo "Secret updated! VSO will sync within 30 seconds."
         echo "Refresh http://localhost:8080 to see changes"
 
-  # ELK Dynamic Credentials Namespace
+  # ELK Demo Namespace
   elk:
-    desc: ELK dynamic credentials - Show available commands
+    desc: ELK demos (static & dynamic credentials) - Show available commands
     cmds:
       - task --list | grep "elk:"
+
+  elk:static:
+    desc: Deploy Elasticsearch static secrets demo (run after init & unseal)
+    aliases: [static]
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/elk/10_static_secrets.sh
 
   elk:dynamic:
     desc: Deploy Elasticsearch dynamic credentials demo (run after init & unseal)
@@ -97,15 +103,6 @@ tasks:
         kubectl delete pod -n {{.NAMESPACE}} -l app=elk-dynamic-webapp
         echo "Pod restarting with new dynamic credentials..."
         echo "Wait a few seconds then check http://localhost:8090"
-
-  elk:creds:
-    desc: View current dynamic Elasticsearch credentials
-    aliases: [view]
-    cmds:
-      - |
-        echo "Current dynamic Elasticsearch credentials:"
-        kubectl get secret elasticsearch-dynamic-secret -n {{.NAMESPACE}} -o jsonpath='{.data.username}' | base64 -d && echo
-        echo "Password: [hidden - check Kubernetes secret]"
 
   # Clean/destroy everything (Terraform)
   clean:

@@ -12,7 +12,6 @@ echo ""
 echo -e "${BLUE}Services:${NC}"
 echo "---------"
 echo "Vault UI:         http://localhost:8200/ui"
-echo "Vault CLI:        source .env && vault status"
 echo "Elasticsearch:    https://localhost:9200"
 echo "Kibana:           https://localhost:5601"
 echo "Grafana:          http://localhost:3000"
@@ -33,6 +32,22 @@ if podman ps --format "{{.Names}}" 2>/dev/null | grep -q "^k8s_vault_elasticsear
 else
   echo -e "${YELLOW}Elasticsearch:    Run 'task up' first${NC}"
   echo -e "${YELLOW}Kibana:           Run 'task up' first${NC}"
+fi
+
+# Dynamic Elasticsearch credentials (VSO)
+NAMESPACE="${NAMESPACE:-vault-stack}"
+if kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" &>/dev/null; then
+  ES_USERNAME=$(kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" -o jsonpath='{.data.username}' 2>/dev/null | base64 -d)
+  ES_PASSWORD=$(kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d)
+  echo ""
+  echo -e "${BLUE}Dynamic Credentials (Vault Secrets Operator):${NC}"
+  echo "----------------------------------------------"
+  echo -e "${GREEN}ES Username:      $ES_USERNAME${NC}"
+  echo -e "${GREEN}ES Password:      $ES_PASSWORD${NC}"
+  echo -e "${YELLOW}Note: Credentials rotate every 5 minutes${NC}"
+else
+  echo ""
+  echo -e "${YELLOW}Dynamic Demo:     Run 'task elk:dynamic' to deploy${NC}"
 fi
 echo -e "${GREEN}Grafana:          admin / admin${NC}"
 echo ""
