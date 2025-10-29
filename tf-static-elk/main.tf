@@ -279,7 +279,7 @@ resource "kubectl_manifest" "elasticsearch_secret" {
 # Access the webapp: kubectl port-forward svc/webapp-service 8080:80
 resource "kubectl_manifest" "webapp_deployment" {
   # Load deployment YAML from file (contains Deployment + Service)
-  yaml_body = file("${path.module}/../k8s/vso-demo/05-webapp-deployment-simple.yaml")
+  yaml_body = file("${path.module}/../k8s/vso-demo/00_webapp-deployment-simple.yaml")
 
   # Ensure secrets exist before deploying the app
   depends_on = [
