@@ -217,6 +217,32 @@ echo -e "${GREEN}✓ Terraform state files removed${NC}"
 echo ""
 
 # ============================================================================
+# Clean up PersistentVolumes
+# ============================================================================
+
+echo -e "${BLUE}Cleaning up PersistentVolumes...${NC}"
+
+# Delete Released PVs from previous deployments
+RELEASED_PVS=$(kubectl get pv -o json | jq -r '.items[] | select(.status.phase == "Released" and (.spec.claimRef.namespace == "'"${NAMESPACE}"'" or (.spec.claimRef.name | contains("vault")))) | .metadata.name')
+
+if [ -n "$RELEASED_PVS" ]; then
+  echo -e "${YELLOW}Deleting Released PVs...${NC}"
+  echo "$RELEASED_PVS" | xargs -r kubectl delete pv 2>/dev/null || true
+  echo -e "${GREEN}✓ Released PVs deleted${NC}"
+else
+  echo -e "${YELLOW}No Released PVs to delete${NC}"
+fi
+
+# Clean up Minikube hostpath storage (if using Minikube)
+if command -v minikube &>/dev/null && minikube status >/dev/null 2>&1; then
+  echo -e "${YELLOW}Cleaning up Minikube hostpath storage...${NC}"
+  minikube ssh -- "sudo rm -rf /tmp/hostpath-provisioner/default/*vault* /tmp/hostpath-provisioner/${NAMESPACE}/*" 2>/dev/null || true
+  echo -e "${GREEN}✓ Minikube storage cleaned${NC}"
+fi
+
+echo ""
+
+# ============================================================================
 # Clean up local files and directories
 # ============================================================================
 
