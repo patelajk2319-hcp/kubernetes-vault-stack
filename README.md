@@ -379,6 +379,51 @@ kubectl config current-context
 kubectl config get-contexts
 ```
 
+### Kibana UI Login Fails with Dynamic Credentials
+
+If browser-based login to Kibana fails with dynamic Elasticsearch credentials (but API authentication works):
+
+**Cause**: The custom `vault_es_role` must include `"allow_restricted_indices": true` to grant access to Kibana system indices (`.kibana_security_session_1`, `.kibana_8.12.0_001`, etc.). Without this, dynamic users cannot persist sessions.
+
+**Solution**: The role is automatically created with the correct permissions by `task elk-dynamic`. To verify or recreate manually:
+
+```bash
+# Verify the role has allow_restricted_indices enabled
+curl -k -u elastic:password123 "https://localhost:9200/_security/role/vault_es_role" | \
+  jq '.vault_es_role.indices[0].allow_restricted_indices'
+# Should return: true
+
+# If false, recreate the role (this is done automatically by deployment script)
+curl -k -u elastic:password123 -X PUT "https://localhost:9200/_security/role/vault_es_role" \
+  -H 'Content-Type: application/json' -d'
+{
+  "cluster": ["monitor", "manage_index_templates", "monitor_ml", "monitor_watcher", "monitor_transform"],
+  "indices": [{
+    "names": ["*"],
+    "privileges": ["read", "write", "create_index", "delete_index", "view_index_metadata", "monitor"],
+    "allow_restricted_indices": true
+  }],
+  "applications": [{
+    "application": "kibana-.kibana",
+    "privileges": ["all"],
+    "resources": ["*"]
+  }],
+  "run_as": []
+}'
+```
+
+**Verify access**:
+```bash
+# Get current credentials
+task info
+
+# Test access to Kibana system index (replace credentials with output from task info)
+curl -k -u "USERNAME:PASSWORD" "https://localhost:9200/.kibana_security_session_1/_search?size=0"
+# Should return search results, not 401 Unauthorized
+```
+
+**Note**: Credentials rotate every 5 minutes. Use `task info` to get fresh credentials if login fails due to expiration.
+
 ## Development
 
 ### Adding New Services

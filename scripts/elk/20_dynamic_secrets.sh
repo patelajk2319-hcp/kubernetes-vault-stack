@@ -78,7 +78,8 @@ ROLE_CREATE_OUTPUT=$(curl -k -s -u elastic:password123 -X POST "https://localhos
         "delete_index",
         "view_index_metadata",
         "monitor"
-      ]
+      ],
+      "allow_restricted_indices": true
     }
   ],
   "applications": [
