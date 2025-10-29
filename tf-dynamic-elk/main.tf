@@ -149,9 +149,6 @@ spec:
     create: true
   refreshAfter: 60s
   revoke: true
-  rolloutRestartTargets:
-    - kind: Deployment
-      name: elk-dynamic-webapp
 YAML
 
   depends_on = [
