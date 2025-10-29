@@ -56,6 +56,49 @@ if ! kubectl get vaultconnection vault-connection -n "${NAMESPACE}" > /dev/null 
   cd tf-dynamic-elk
 fi
 
+# Create custom Elasticsearch role (required for dynamic credentials)
+echo -e "${BLUE}Creating custom Elasticsearch role...${NC}"
+ROLE_CREATE_OUTPUT=$(curl -k -s -u elastic:password123 -X POST "https://localhost:9200/_security/role/vault_es_role" \
+  -H 'Content-Type: application/json' -d'
+{
+  "cluster": [
+    "monitor",
+    "manage_index_templates",
+    "monitor_ml",
+    "monitor_watcher",
+    "monitor_transform"
+  ],
+  "indices": [
+    {
+      "names": [ "*" ],
+      "privileges": [
+        "read",
+        "write",
+        "create_index",
+        "delete_index",
+        "view_index_metadata",
+        "monitor"
+      ]
+    }
+  ],
+  "applications": [
+    {
+      "application": "kibana-.kibana",
+      "privileges": [ "all" ],
+      "resources": [ "*" ]
+    }
+  ],
+  "run_as": []
+}' 2>&1)
+
+if echo "$ROLE_CREATE_OUTPUT" | grep -q '"created":true'; then
+  echo -e "${GREEN}✓ Custom role 'vault_es_role' created${NC}"
+elif echo "$ROLE_CREATE_OUTPUT" | grep -q 'already exists'; then
+  echo -e "${YELLOW}⚠ Custom role 'vault_es_role' already exists (skipping)${NC}"
+else
+  echo -e "${GREEN}✓ Custom role 'vault_es_role' configured${NC}"
+fi
+
 # Initialise Terraform
 echo -e "${BLUE}Initialising Terraform...${NC}"
 terraform init -upgrade

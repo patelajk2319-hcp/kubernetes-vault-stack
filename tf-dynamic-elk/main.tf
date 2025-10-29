@@ -58,47 +58,18 @@ resource "vault_database_secret_backend_role" "elasticsearch" {
   # After this, VSO must request NEW credentials
   max_ttl = var.max_ttl
 
-  # Elasticsearch role definition (JSON format)
-  # Defines permissions for dynamically created users
+  # Elasticsearch roles assignment
+  # Assigns pre-existing Elasticsearch roles to dynamically created users
+  #
+  # This approach uses elasticsearch_roles instead of elasticsearch_role_definition
+  # because we need to assign the reserved 'kibana_admin' role for Kibana UI login.
+  #
+  # Roles assigned:
+  # - vault_es_role: Custom role with ES index/cluster permissions (created via ES API)
+  # - kibana_admin: Reserved Elasticsearch role required for Kibana UI login
   creation_statements = [
     jsonencode({
-      elasticsearch_role_definition = {
-        # Index permissions - access to all indices
-        indices = [
-          {
-            names = ["*"] # All indices
-            privileges = [
-              "read",                # Read documents and query
-              "write",               # Index/update/delete documents
-              "create_index",        # Create new indices
-              "delete_index",        # Delete indices
-              "view_index_metadata", # View index settings/mappings
-              "monitor"              # View index statistics
-            ]
-          }
-        ]
-
-        # Application permissions - Kibana UI access
-        applications = [
-          {
-            application = "kibana-.kibana" # Kibana system indices
-            privileges  = ["all"]          # Full Kibana UI access
-            resources   = ["*"]            # All Kibana spaces
-          }
-        ]
-
-        # Cluster permissions - monitoring and management
-        cluster = [
-          "monitor",                # View cluster health/stats
-          "manage_index_templates", # Manage index templates
-          "monitor_ml",             # View ML jobs
-          "monitor_watcher",        # View watchers
-          "monitor_transform"       # View transforms
-        ]
-
-        # Run-as permissions (none - users cannot impersonate others)
-        run_as = []
-      }
+      elasticsearch_roles = ["vault_es_role", "kibana_admin"]
     })
   ]
 }
