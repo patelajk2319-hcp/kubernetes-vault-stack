@@ -13,7 +13,7 @@ echo -e "${BLUE}=== Deploying VSO ===${NC}"
 echo ""
 
 # Change to tf-vso directory
-cd "$(dirname "$0")/../../tf-vso"
+cd "$(dirname "$0")/../../terraform/tf-vso"
 
 # Check if .env exists
 if [ ! -f "../.env" ]; then

@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 echo ""
 
 # Change to tf-core directory
-cd "$(dirname "$0")/../tf-core"
+cd "$(dirname "$0")/../terraform/tf-core"
 
 # Initialise Terraform
 echo -e "${BLUE}Initialising Terraform...${NC}"

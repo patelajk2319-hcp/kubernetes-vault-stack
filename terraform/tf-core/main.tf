@@ -48,7 +48,7 @@ resource "null_resource" "env_file" {
   }
 
   provisioner "local-exec" {
-    command = "${path.module}/scripts/create-env-file.sh '${local.vault_license}' '${path.module}/../.env'"
+    command = "${path.module}/scripts/create-env-file.sh '${local.vault_license}' '${path.module}/../../.env'"
   }
 }
 

@@ -13,7 +13,7 @@ echo -e "${BLUE}=== Deploying Elasticsearch Dynamic Credentials ===${NC}"
 echo ""
 
 # Change to tf-dynamic-elk directory
-cd "$(dirname "$0")/../../tf-dynamic-elk"
+cd "$(dirname "$0")/../../terraform/tf-dynamic-elk"
 
 # Check if .env exists
 if [ ! -f "../.env" ]; then
@@ -53,7 +53,7 @@ if ! kubectl get vaultconnection vault-connection -n "${NAMESPACE}" > /dev/null 
   echo -e "${YELLOW}Warning: VaultConnection not found. Running 'task vso' first...${NC}"
   cd ..
   NAMESPACE="${NAMESPACE}" ./scripts/vso/00_deploy_vso.sh
-  cd tf-dynamic-elk
+  cd terraform/tf-dynamic-elk
 fi
 
 # Create custom Elasticsearch role (required for dynamic credentials)

@@ -60,11 +60,11 @@ if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
 fi
 
 # 1. Destroy dynamic ELK credentials demo
-if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
+if [ -f "terraform/tf-dynamic-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying dynamic ELK credentials...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-dynamic-elk
+    cd terraform/tf-dynamic-elk
 
     # Force disable database mount to bypass lease revocation issues
     echo -e "${YELLOW}Force disabling database mount (bypassing lease revocation)...${NC}"
@@ -88,17 +88,17 @@ if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-dynamic-elk/terraform.tfstate*
+    rm -f terraform/tf-dynamic-elk/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
 
 # 2. Destroy static ELK secrets demo
-if [ -f "tf-static-elk/terraform.tfstate" ]; then
+if [ -f "terraform/tf-static-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying static ELK secrets...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-static-elk
+    cd terraform/tf-static-elk
     echo -e "${YELLOW}Initialising Terraform...${NC}"
     terraform init -upgrade
     echo -e "${YELLOW}Running terraform destroy...${NC}"
@@ -111,17 +111,17 @@ if [ -f "tf-static-elk/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-static-elk/terraform.tfstate*
+    rm -f terraform/tf-static-elk/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
 
 # 3. Destroy VSO infrastructure
-if [ -f "tf-vso/terraform.tfstate" ]; then
+if [ -f "terraform/tf-vso/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying VSO infrastructure...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-vso
+    cd terraform/tf-vso
     echo -e "${YELLOW}Initialising Terraform...${NC}"
     terraform init -upgrade
     echo -e "${YELLOW}Running terraform destroy...${NC}"
@@ -134,7 +134,7 @@ if [ -f "tf-vso/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-vso/terraform.tfstate*
+    rm -f terraform/tf-vso/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
@@ -216,7 +216,7 @@ echo ""
 # ============================================================================
 
 echo -e "${BLUE}Destroying core infrastructure...${NC}"
-cd "$PROJECT_ROOT/tf-core"
+cd "$PROJECT_ROOT/terraform/tf-core"
 
 # Check if Kubernetes cluster is accessible
 K8S_ACCESSIBLE=false
@@ -252,8 +252,8 @@ echo ""
 # ============================================================================
 
 echo -e "${BLUE}Cleaning up Terraform state files...${NC}"
-find tf-core tf-vso tf-static-elk tf-dynamic-elk -type f \( -name "terraform.tfstate*" -o -name ".terraform.lock.hcl" \) -delete 2>/dev/null
-find tf-core tf-vso tf-static-elk tf-dynamic-elk -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null
+find terraform/tf-core terraform/tf-vso terraform/tf-static-elk terraform/tf-dynamic-elk -type f \( -name "terraform.tfstate*" -o -name ".terraform.lock.hcl" \) -delete 2>/dev/null
+find terraform/tf-core terraform/tf-vso terraform/tf-static-elk terraform/tf-dynamic-elk -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null
 echo -e "${GREEN}✓ Terraform state files removed${NC}"
 
 echo ""

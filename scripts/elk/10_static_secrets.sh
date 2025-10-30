@@ -25,7 +25,7 @@ if ! kubectl get deployment vault-secrets-operator-controller-manager -n "$NAMES
 fi
 
 # Navigate to tf-static-elk directory
-cd "$PROJECT_ROOT/tf-static-elk"
+cd "$PROJECT_ROOT/terraform/tf-static-elk"
 
 # Initialize Terraform
 echo -e "\033[0;34mInitialising Terraform...\033[0m"

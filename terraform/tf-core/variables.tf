@@ -7,7 +7,7 @@ variable "namespace" {
 variable "vault_license_file" {
   description = "Path to Vault Enterprise license file"
   type        = string
-  default     = "../licenses/vault-enterprise/license.lic"
+  default     = "../../licenses/vault-enterprise/license.lic"
 }
 
 variable "cert_common_name" {

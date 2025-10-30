@@ -11,7 +11,7 @@ resource "helm_release" "vault" {
   wait             = false # Pods won't be ready until manual init/unseal
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/vault/vault.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/vault/vault.yaml")
   ]
 }
 
@@ -31,7 +31,7 @@ resource "helm_release" "grafana" {
   wait       = false
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/grafana/grafana.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/grafana/grafana.yaml")
   ]
 
   depends_on = [
@@ -51,7 +51,7 @@ resource "helm_release" "prometheus" {
   wait       = false
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/prometheus/prometheus.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/prometheus/prometheus.yaml")
   ]
 
   depends_on = [
@@ -71,7 +71,7 @@ resource "helm_release" "loki" {
   wait       = false
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/loki/loki.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/loki/loki.yaml")
   ]
 
   depends_on = [
@@ -91,7 +91,7 @@ resource "helm_release" "promtail" {
   wait       = false
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/promtail/promtail.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/promtail/promtail.yaml")
   ]
 
   depends_on = [
@@ -112,7 +112,7 @@ resource "helm_release" "vault_secrets_operator" {
   wait             = true
 
   values = [
-    file("${path.root}/../helm-chart/vault-stack/values/vso/vault-secrets-operator.yaml")
+    file("${path.root}/../../helm-chart/vault-stack/values/vso/vault-secrets-operator.yaml")
   ]
 
   depends_on = [
