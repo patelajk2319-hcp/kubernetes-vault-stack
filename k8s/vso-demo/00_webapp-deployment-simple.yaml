@@ -1,0 +1,229 @@
+---
+# Demo web application that uses secrets synced by VSO
+# This version uses a simple Python HTTP server to display secrets
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-deployment
+  namespace: vault-stack
+  labels:
+    app: webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: webapp
+          image: python:3.11-alpine
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              cat > /tmp/index.html <<'HTMLEOF'
+              <!DOCTYPE html>
+              <html>
+              <head>
+                  <title>VSO Application</title>
+                  <style>
+                      body {
+                          font-family: Arial, sans-serif;
+                          max-width: 800px;
+                          margin: 50px auto;
+                          padding: 20px;
+                          background-color: #f5f5f5;
+                      }
+                      .container {
+                          background-color: white;
+                          border-radius: 8px;
+                          padding: 30px;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                      }
+                      h1 {
+                          color: #333;
+                          border-bottom: 3px solid #00d4aa;
+                          padding-bottom: 10px;
+                      }
+                      h2 {
+                          color: #555;
+                          margin-top: 30px;
+                      }
+                      .secret-section {
+                          background-color: #f9f9f9;
+                          border-left: 4px solid #00d4aa;
+                          padding: 15px;
+                          margin: 15px 0;
+                      }
+                      .secret-item {
+                          margin: 10px 0;
+                          font-family: monospace;
+                      }
+                      .label {
+                          font-weight: bold;
+                          color: #666;
+                      }
+                      .value {
+                          color: #00d4aa;
+                      }
+                      .info {
+                          background-color: #e3f2fd;
+                          border-left: 4px solid #2196f3;
+                          padding: 15px;
+                          margin: 20px 0;
+                      }
+                  </style>
+              </head>
+              <body>
+                  <div class="container">
+                      <h1>🔐 Vault Secrets Operator Demo</h1>
+
+                      <div class="info">
+                          <strong>ℹ️ About this demo:</strong><br>
+                          This application demonstrates HashiCorp Vault Secrets Operator (VSO) synchronising secrets from Vault to Kubernetes. The secrets below are automatically synced from Vault and injected into this pod as environment variables.
+                      </div>
+
+                      <h2>📝 Web Application Credentials</h2>
+                      <div class="secret-section">
+                          <div class="secret-item">
+                              <span class="label">Username:</span> <span class="value">USERNAME_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Password:</span> <span class="value">PASSWORD_VALUE</span>
+                          </div>
+                      </div>
+
+                      <h2>🔍 Elasticsearch Configuration</h2>
+                      <div class="secret-section">
+                          <div class="secret-item">
+                              <span class="label">Host:</span> <span class="value">ES_HOST_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Port:</span> <span class="value">ES_PORT_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Protocol:</span> <span class="value">ES_PROTOCOL_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">URL:</span> <span class="value">ES_URL_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Username:</span> <span class="value">ES_USERNAME_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Password:</span> <span class="value">ES_PASSWORD_VALUE</span>
+                          </div>
+                          <div class="secret-item">
+                              <span class="label">Index:</span> <span class="value">ES_INDEX_VALUE</span>
+                          </div>
+                      </div>
+
+                      <div class="info">
+                          <strong>🔄 Try this:</strong><br>
+                          1. Update the secrets in Vault using <code>task vso-update</code><br>
+                          2. Wait up to 30 seconds<br>
+                          3. Refresh this page to see the updated values
+                      </div>
+                  </div>
+              </body>
+              </html>
+              HTMLEOF
+
+              # Replace placeholders with actual environment variable values
+              sed -i "s/USERNAME_VALUE/$USERNAME/g" /tmp/index.html
+              sed -i "s/PASSWORD_VALUE/$PASSWORD/g" /tmp/index.html
+              sed -i "s|ES_HOST_VALUE|$ES_HOST|g" /tmp/index.html
+              sed -i "s/ES_PORT_VALUE/$ES_PORT/g" /tmp/index.html
+              sed -i "s/ES_PROTOCOL_VALUE/$ES_PROTOCOL/g" /tmp/index.html
+              sed -i "s|ES_URL_VALUE|$ES_URL|g" /tmp/index.html
+              sed -i "s/ES_USERNAME_VALUE/$ES_USERNAME/g" /tmp/index.html
+              sed -i "s/ES_PASSWORD_VALUE/$ES_PASSWORD/g" /tmp/index.html
+              sed -i "s/ES_INDEX_VALUE/$ES_INDEX/g" /tmp/index.html
+
+              # Start simple HTTP server
+              cd /tmp
+              python3 -m http.server 80
+
+          ports:
+            - containerPort: 80
+          env:
+            # Environment variables from webapp-secret (synced by VSO)
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: webapp-secret
+                  key: username
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: webapp-secret
+                  key: password
+
+            # Environment variables from elasticsearch-secret (synced by VSO)
+            - name: ES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_host
+            - name: ES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_port
+            - name: ES_PROTOCOL
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_protocol
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_url
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_password
+            - name: ES_INDEX
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: es_index
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+---
+# Service to expose the webapp
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+  namespace: vault-stack
+  labels:
+    app: webapp
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: webapp

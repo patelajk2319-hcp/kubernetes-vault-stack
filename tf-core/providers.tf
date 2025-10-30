@@ -42,3 +42,4 @@ provider "helm" {
 provider "kubectl" {
   config_path = "~/.kube/config"
 }
+

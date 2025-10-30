@@ -12,7 +12,6 @@ echo ""
 echo -e "${BLUE}Services:${NC}"
 echo "---------"
 echo "Vault UI:         http://localhost:8200/ui"
-echo "Vault CLI:        source .env && vault status"
 echo "Elasticsearch:    https://localhost:9200"
 echo "Kibana:           https://localhost:5601"
 echo "Grafana:          http://localhost:3000"
@@ -33,6 +32,43 @@ if podman ps --format "{{.Names}}" 2>/dev/null | grep -q "^k8s_vault_elasticsear
 else
   echo -e "${YELLOW}Elasticsearch:    Run 'task up' first${NC}"
   echo -e "${YELLOW}Kibana:           Run 'task up' first${NC}"
+fi
+
+# Static Secrets (VSO)
+NAMESPACE="${NAMESPACE:-vault-stack}"
+if kubectl get secret webapp-secret -n "$NAMESPACE" &>/dev/null; then
+  WEBAPP_USERNAME=$(kubectl get secret webapp-secret -n "$NAMESPACE" -o jsonpath='{.data.username}' 2>/dev/null | base64 -d)
+  WEBAPP_PASSWORD=$(kubectl get secret webapp-secret -n "$NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d)
+  ES_STATIC_HOST=$(kubectl get secret elasticsearch-secret -n "$NAMESPACE" -o jsonpath='{.data.es_host}' 2>/dev/null | base64 -d)
+  ES_STATIC_USERNAME=$(kubectl get secret elasticsearch-secret -n "$NAMESPACE" -o jsonpath='{.data.es_username}' 2>/dev/null | base64 -d)
+  ES_STATIC_PASSWORD=$(kubectl get secret elasticsearch-secret -n "$NAMESPACE" -o jsonpath='{.data.es_password}' 2>/dev/null | base64 -d)
+  echo ""
+  echo -e "${BLUE}Static Secrets (Vault Secrets Operator):${NC}"
+  echo "-----------------------------------------"
+  echo -e "${GREEN}Webapp Username:     $WEBAPP_USERNAME${NC}"
+  echo -e "${GREEN}Webapp Password:     $WEBAPP_PASSWORD${NC}"
+  echo -e "${GREEN}ES Host:             $ES_STATIC_HOST${NC}"
+  echo -e "${GREEN}ES Username:         $ES_STATIC_USERNAME${NC}"
+  echo -e "${GREEN}ES Password:         $ES_STATIC_PASSWORD${NC}"
+  echo -e "${YELLOW}Note: Static secrets (do not rotate)${NC}"
+else
+  echo ""
+  echo -e "${YELLOW}Static Secrets:   <does not exist>${NC}"
+fi
+
+# Dynamic Elasticsearch credentials (VSO)
+if kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" &>/dev/null; then
+  ES_USERNAME=$(kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" -o jsonpath='{.data.username}' 2>/dev/null | base64 -d)
+  ES_PASSWORD=$(kubectl get secret elasticsearch-dynamic-secret -n "$NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d)
+  echo ""
+  echo -e "${BLUE}Dynamic Credentials (Vault Secrets Operator):${NC}"
+  echo "----------------------------------------------"
+  echo -e "${GREEN}ES Username:      $ES_USERNAME${NC}"
+  echo -e "${GREEN}ES Password:      $ES_PASSWORD${NC}"
+  echo -e "${YELLOW}Note: Credentials rotate every 5 minutes${NC}"
+else
+  echo ""
+  echo -e "${YELLOW}Dynamic Credentials:  <does not exist>${NC}"
 fi
 echo -e "${GREEN}Grafana:          admin / admin${NC}"
 echo ""

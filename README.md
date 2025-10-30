@@ -2,6 +2,7 @@
 
 This stack deploys a complete Vault Enterprise environment on Kubernetes with:
 - **Security**: Vault Enterprise with Raft storage backend
+- **Secret Management**: Vault Secrets Operator (VSO) for native Kubernetes secret synchronisation
 - **Monitoring**: Grafana, Prometheus, Loki, Promtail
 - **Data Services**: Elasticsearch, Kibana (via ECK operator)
 - **Observability**: Unified logging and metrics collection
@@ -78,15 +79,22 @@ task info
 ## Available Commands
 
 ```bash
-task              # List all available commands
-task up           # Deploy the entire stack (Terraform)
-task init         # Initialise Vault
-task unseal       # Unseal Vault and start port forwarding
-task status       # Show status of all components
-task info         # Show access information and credentials
-task logs         # View logs for a service (usage: task logs -- <service-name>)
-task clean        # Destroy the entire stack (Terraform)
-task rm           # Alias for clean
+task                    # List all available commands
+task up                 # Deploy the entire stack (Terraform)
+task init               # Initialise Vault
+task unseal             # Unseal Vault and start port forwarding
+task status             # Show status of all components
+task info               # Show access information and credentials
+task logs               # View logs for a service (usage: task logs -- <service-name>)
+task vso                # Configure and deploy Vault Secrets Operator (static secrets)
+task vso-webapp         # Access VSO demo webapp
+task vso-update         # Update secrets to test VSO synchronisation
+task elk-dynamic        # Deploy Elasticsearch dynamic credentials demo (alias: dynamic)
+task elk-dynamic-webapp # Access Elasticsearch dynamic credentials demo
+task elk-dynamic-test   # Force credential rotation
+task elk-dynamic-creds  # View current dynamic credentials
+task clean              # Destroy the entire stack (Terraform)
+task rm                 # Alias for clean
 ```
 
 ## Accessing Services
@@ -163,6 +171,46 @@ task logs -- kibana
 task logs
 ```
 
+### Vault Secrets Operator (VSO) - Static Secrets
+
+Demonstrates VSO synchronising static secrets from Vault to Kubernetes.
+
+```bash
+# After deploying and unsealing Vault, run the VSO task
+task vso
+
+# Access demo webapp
+task vso-webapp  # http://localhost:8080
+
+# Update secrets to test synchronisation
+task vso-update
+```
+
+### Elasticsearch Dynamic Credentials
+
+Demonstrates Vault's database secrets engine generating time-limited, automatically-rotated credentials for Elasticsearch.
+
+```bash
+# Deploy dynamic credentials demo
+task elk-dynamic  # or: task dynamic
+
+# Access demo webapp (shows live credential rotation)
+task elk-dynamic-webapp  # http://localhost:8090
+
+# Force credential rotation (restart pod with new credentials)
+task elk-dynamic-test
+
+# View current credentials
+task elk-dynamic-creds
+```
+
+**Key Features:**
+- ✅ **Automatic generation** - Vault creates unique Elasticsearch users on-demand
+- ✅ **Time-limited** - Credentials expire after 5 minutes (configurable)
+- ✅ **Auto-rotation** - New credentials generated every 60 seconds
+- ✅ **Auto-revocation** - Old credentials automatically deleted by Vault
+- ✅ **Zero manual intervention** - No password rotation scripts needed
+
 ### Clean and Redeploy
 
 ```bash
@@ -179,7 +227,7 @@ task unseal
 
 ### Terraform Variables
 
-Infrastructure configuration is managed via Terraform variables in `terraform/variables.tf`:
+Infrastructure configuration is managed via Terraform variables in `tf-core/variables.tf`:
 
 ```hcl
 namespace              = "vault-stack"           # Kubernetes namespace
@@ -196,7 +244,7 @@ namespace = "my-vault"
 cert_validity_hours = 17520  # 2 years
 ```
 
-See `terraform/README.md` for full documentation.
+For advanced Terraform configuration, see the `tf-core/` directory.
 
 ### Helm Values
 
@@ -331,13 +379,58 @@ kubectl config current-context
 kubectl config get-contexts
 ```
 
+### Kibana UI Login Fails with Dynamic Credentials
+
+If browser-based login to Kibana fails with dynamic Elasticsearch credentials (but API authentication works):
+
+**Cause**: The custom `vault_es_role` must include `"allow_restricted_indices": true` to grant access to Kibana system indices (`.kibana_security_session_1`, `.kibana_8.12.0_001`, etc.). Without this, dynamic users cannot persist sessions.
+
+**Solution**: The role is automatically created with the correct permissions by `task elk-dynamic`. To verify or recreate manually:
+
+```bash
+# Verify the role has allow_restricted_indices enabled
+curl -k -u elastic:password123 "https://localhost:9200/_security/role/vault_es_role" | \
+  jq '.vault_es_role.indices[0].allow_restricted_indices'
+# Should return: true
+
+# If false, recreate the role (this is done automatically by deployment script)
+curl -k -u elastic:password123 -X PUT "https://localhost:9200/_security/role/vault_es_role" \
+  -H 'Content-Type: application/json' -d'
+{
+  "cluster": ["monitor", "manage_index_templates", "monitor_ml", "monitor_watcher", "monitor_transform"],
+  "indices": [{
+    "names": ["*"],
+    "privileges": ["read", "write", "create_index", "delete_index", "view_index_metadata", "monitor"],
+    "allow_restricted_indices": true
+  }],
+  "applications": [{
+    "application": "kibana-.kibana",
+    "privileges": ["all"],
+    "resources": ["*"]
+  }],
+  "run_as": []
+}'
+```
+
+**Verify access**:
+```bash
+# Get current credentials
+task info
+
+# Test access to Kibana system index (replace credentials with output from task info)
+curl -k -u "USERNAME:PASSWORD" "https://localhost:9200/.kibana_security_session_1/_search?size=0"
+# Should return search results, not 401 Unauthorized
+```
+
+**Note**: Credentials rotate every 5 minutes. Use `task info` to get fresh credentials if login fails due to expiration.
+
 ## Development
 
 ### Adding New Services
 
 1. Add official Helm chart dependency to `helm-chart/vault-stack/Chart.yaml`
 2. Create a new values file in `helm-chart/vault-stack/values/<service>/<service>.yaml`
-3. Update Terraform module in `terraform/modules/helm-releases/main.tf` to include new values file
-4. Add NodePort service in `terraform/main.tf` if external access is needed
+3. Update Terraform module in `tf-core/modules/helm-releases/main.tf` to include new values file
+4. Add NodePort service in `tf-core/main.tf` if external access is needed
 5. Update `task port-forward` in `Taskfile.yaml` if using port forwarding
 6. Update `task info` in `scripts/tools/info.sh` for credential display

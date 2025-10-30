@@ -41,6 +41,69 @@ tasks:
     cmds:
       - NAMESPACE={{.NAMESPACE}} VAULT_POD={{.VAULT_POD}} ./scripts/60_vault_sample_data.sh
 
+  # VSO: Set up Vault Secrets Operator demo
+  vso:
+    desc: Deploy and configure Vault Secrets Operator (run after init & unseal)
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/vso/00_deploy_vso.sh
+
+  # VSO: Access demo webapp
+  vso-webapp:
+    desc: Access VSO demo webapp at http://localhost:8080
+    cmds:
+      - echo "Opening VSO demo at http://localhost:8080"
+      - echo "Press Ctrl+C to stop"
+      - kubectl port-forward -n {{.NAMESPACE}} svc/webapp-service 8080:80
+
+  # VSO: Update secrets to test synchronisation
+  vso-update:
+    desc: Update secrets in Vault to test VSO sync
+    cmds:
+      - |
+        echo "Updating secrets in Vault..."
+        kubectl exec -n {{.NAMESPACE}} {{.VAULT_POD}} -- vault kv put kvv2/webapp/config \
+          username="user-$(date +%s)" \
+          password="pass-$(date +%s)"
+        echo "Secret updated! VSO will sync within 30 seconds."
+        echo "Refresh http://localhost:8080 to see changes"
+
+  # ELK Demo Namespace
+  elk:
+    desc: ELK demos (static & dynamic credentials) - Show available commands
+    cmds:
+      - task --list | grep "elk:"
+
+  elk:static:
+    desc: Deploy Elasticsearch static secrets demo (run after init & unseal)
+    aliases: [static]
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/elk/10_static_secrets.sh
+
+  elk:dynamic:
+    desc: Deploy Elasticsearch dynamic credentials demo (run after init & unseal)
+    aliases: [dynamic]
+    cmds:
+      - NAMESPACE={{.NAMESPACE}} ./scripts/elk/20_dynamic_secrets.sh
+
+  elk:webapp:
+    desc: Access demo webapp at http://localhost:8090
+    aliases: [web]
+    cmds:
+      - echo "Opening Elasticsearch dynamic credentials demo at http://localhost:8090"
+      - echo "Lease renewed every 60s | Credentials rotate every 5 minutes"
+      - echo "Press Ctrl+C to stop"
+      - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
+
+  elk:rotate:
+    desc: Force credential rotation by restarting the demo pod
+    aliases: [rotate]
+    cmds:
+      - |
+        echo "Forcing credential rotation..."
+        kubectl delete pod -n {{.NAMESPACE}} -l app=elk-dynamic-webapp
+        echo "Pod restarting with new dynamic credentials..."
+        echo "Wait a few seconds then check http://localhost:8090"
+
   # Clean/destroy everything (Terraform)
   clean:
     desc: Destroy the entire stack

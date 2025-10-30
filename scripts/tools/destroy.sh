@@ -6,111 +6,255 @@
 source "$(dirname "$0")/../lib/colors.sh"
 
 NAMESPACE="${NAMESPACE:-vault-stack}"
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-# Stop port-forwards
+echo -e "${BLUE}=== Destroying Vault Stack ===${NC}"
+echo ""
+
+# ============================================================================
+# Destroy Terraform-managed resources (in reverse dependency order)
+# ============================================================================
+
+cd "$PROJECT_ROOT"
+
+# Check if Vault is accessible
+VAULT_ACCESSIBLE=false
+source .env 2>/dev/null || true
+if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
+  if vault status >/dev/null 2>&1; then
+    VAULT_ACCESSIBLE=true
+    echo -e "${GREEN}✓ Vault is accessible${NC}"
+  else
+    echo -e "${YELLOW}⚠ Vault is not accessible - will skip Terraform destroy for VSO modules${NC}"
+  fi
+fi
+
+# 1. Destroy dynamic ELK credentials demo
+if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
+  echo -e "${BLUE}Destroying dynamic ELK credentials...${NC}"
+
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-dynamic-elk
+
+    # Force disable database mount to bypass lease revocation issues
+    echo -e "${YELLOW}Force disabling database mount (bypassing lease revocation)...${NC}"
+    vault secrets disable database 2>/dev/null || true
+    echo -e "${GREEN}✓ Database mount disabled${NC}"
+
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+
+    # Remove database mount from state since we manually disabled it
+    echo -e "${YELLOW}Removing database mount from Terraform state...${NC}"
+    terraform state rm vault_mount.database 2>/dev/null || true
+
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ Dynamic ELK credentials destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy dynamic ELK credentials${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
+  else
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-dynamic-elk/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
+  fi
+fi
+
+# 2. Destroy static ELK secrets demo
+if [ -f "tf-static-elk/terraform.tfstate" ]; then
+  echo -e "${BLUE}Destroying static ELK secrets...${NC}"
+
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-static-elk
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ Static ELK secrets destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy static ELK secrets${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
+  else
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-static-elk/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
+  fi
+fi
+
+# 3. Destroy VSO infrastructure
+if [ -f "tf-vso/terraform.tfstate" ]; then
+  echo -e "${BLUE}Destroying VSO infrastructure...${NC}"
+
+  if [ "$VAULT_ACCESSIBLE" = true ]; then
+    cd tf-vso
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+    echo -e "${YELLOW}Running terraform destroy...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ VSO infrastructure destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy VSO infrastructure${NC}"
+      exit 1
+    fi
+    cd "$PROJECT_ROOT"
+  else
+    echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
+    rm -f tf-vso/terraform.tfstate*
+    echo -e "${GREEN}✓ State files removed${NC}"
+  fi
+fi
+
+echo ""
+
+# ============================================================================
+# Clean up processes
+# ============================================================================
+
 echo -e "${BLUE}Stopping port-forwards...${NC}"
 pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
+echo -e "${GREEN}✓ Port-forwards stopped${NC}"
 
-# Stop minikube mount
 echo -e "${BLUE}Stopping minikube mount...${NC}"
 pkill -f "minikube mount" 2>/dev/null || true
 echo -e "${GREEN}✓ Minikube mount stopped${NC}"
 
-# Destroy ELK stack (podman) if it exists
-echo -e "${BLUE}Checking for ELK stack (podman)...${NC}"
-cd "$(dirname "$0")/../.."
+echo ""
+
+# ============================================================================
+# Destroy ELK stack (Podman containers)
+# ============================================================================
+
+echo -e "${BLUE}Destroying ELK stack (Podman)...${NC}"
 if podman ps -a --format "{{.Names}}" 2>/dev/null | grep -q "^k8s_vault_"; then
-  echo -e "${YELLOW}Found ELK stack containers, destroying...${NC}"
   podman-compose -f elk-compose.yml down -v 2>/dev/null || true
   echo -e "${GREEN}✓ ELK stack destroyed${NC}"
 else
-  echo -e "${GREEN}✓ No ELK stack containers found${NC}"
+  echo -e "${YELLOW}ELK stack not running, skipping${NC}"
 fi
 
-# Run Terraform destroy
-echo -e "${YELLOW}Running Terraform Destroy...${NC}"
-cd "$(dirname "$0")/../../terraform"
+echo ""
 
-# Check if state file exists (indicates resources were deployed)
-if [ ! -f "terraform.tfstate" ] && [ ! -f "terraform.tfstate.backup" ]; then
-  echo -e "${YELLOW}No Terraform state found - nothing to destroy${NC}"
+# ============================================================================
+# Force remove stuck VSO resources (prevents namespace from hanging)
+# ============================================================================
 
-  # Clean up any leftover Terraform files
-  if [ -d ".terraform" ] || [ -f ".terraform.lock.hcl" ]; then
-    echo -e "${BLUE}Cleaning up Terraform initialisation files...${NC}"
-    rm -rf .terraform/ .terraform.lock.hcl
-    echo -e "${GREEN}Terraform files cleaned${NC}"
+if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+  echo -e "${BLUE}Checking for stuck VSO resources...${NC}"
+
+  # Remove VaultStaticSecret finalizers
+  if kubectl get vaultstaticsecret -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Removing finalizers from VaultStaticSecret resources...${NC}"
+    kubectl get vaultstaticsecret -n "${NAMESPACE}" -o name 2>/dev/null | \
+      xargs -I {} kubectl patch {} -n "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+    echo -e "${GREEN}✓ VaultStaticSecret finalizers removed${NC}"
   fi
 
-  cd ..
-
-  # Remove vault-init.json if it exists
-  if [ -f vault-init.json ]; then
-    rm -f vault-init.json
-    echo -e "${GREEN}Removed vault-init.json${NC}"
+  # Remove VaultDynamicSecret finalizers
+  if kubectl get vaultdynamicsecret -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Removing finalizers from VaultDynamicSecret resources...${NC}"
+    kubectl get vaultdynamicsecret -n "${NAMESPACE}" -o name 2>/dev/null | \
+      xargs -I {} kubectl patch {} -n "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+    echo -e "${GREEN}✓ VaultDynamicSecret finalizers removed${NC}"
   fi
 
-  # Remove vault audit logs directory
-  if [ -d vault-audit-logs ]; then
-    rm -rf vault-audit-logs
-    echo -e "${GREEN}Removed vault-audit-logs/${NC}"
+  # Remove VaultAuth finalizers
+  if kubectl get vaultauth -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Removing finalizers from VaultAuth resources...${NC}"
+    kubectl get vaultauth -n "${NAMESPACE}" -o name 2>/dev/null | \
+      xargs -I {} kubectl patch {} -n "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+    echo -e "${GREEN}✓ VaultAuth finalizers removed${NC}"
   fi
 
-  # Remove fleet tokens directory
-  if [ -d fleet-tokens ]; then
-    rm -rf fleet-tokens
-    echo -e "${GREEN}Removed fleet-tokens/${NC}"
+  # Remove VaultConnection finalizers
+  if kubectl get vaultconnection -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}Removing finalizers from VaultConnection resources...${NC}"
+    kubectl get vaultconnection -n "${NAMESPACE}" -o name 2>/dev/null | \
+      xargs -I {} kubectl patch {} -n "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+    echo -e "${GREEN}✓ VaultConnection finalizers removed${NC}"
   fi
-
-  # Remove certificates directory
-  if [ -d certs ]; then
-    rm -rf certs
-    echo -e "${GREEN}Removed certs/${NC}"
-  fi
-
-  echo -e "${GREEN}Stack already destroyed${NC}"
-  exit 0
 fi
 
-# Initialise Terraform (in case modules were updated)
-echo -e "${BLUE}Initialising Terraform...${NC}"
-terraform init -upgrade > /dev/null 2>&1
+echo ""
 
-# Run destroy (don't use set -e to allow cleanup even if destroy fails)
-if terraform destroy -auto-approve; then
-  # Clean up Terraform state files only if destroy succeeded
-  echo -e "${BLUE}Cleaning up Terraform state files...${NC}"
-  rm -f terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl
-  rm -rf .terraform/
-  echo -e "${GREEN}Terraform state files removed${NC}"
+# ============================================================================
+# Destroy core infrastructure (Vault, K8s namespace, all Helm releases)
+# ============================================================================
+
+echo -e "${BLUE}Destroying core infrastructure...${NC}"
+cd "$PROJECT_ROOT/tf-core"
+if [ -f "terraform.tfstate" ]; then
+  echo -e "${YELLOW}Initialising Terraform...${NC}"
+  terraform init -upgrade
+  echo -e "${YELLOW}Running terraform destroy (this may take several minutes)...${NC}"
+  if terraform destroy -auto-approve; then
+    echo -e "${GREEN}✓ Core infrastructure destroyed${NC}"
+  else
+    echo -e "${RED}✗ Failed to destroy core infrastructure${NC}"
+    exit 1
+  fi
 else
-  echo -e "${YELLOW}Terraform destroy failed!${NC}"
-  exit 1
+  echo -e "${YELLOW}No state file, skipping${NC}"
 fi
 
-# Remove runtime directories and files
-cd ..
-if [ -f vault-init.json ]; then
-  rm -f vault-init.json
-  echo -e "${GREEN}Removed vault-init.json${NC}"
+cd "$PROJECT_ROOT"
+
+echo ""
+
+# ============================================================================
+# Clean up Terraform state files (all modules in one operation)
+# ============================================================================
+
+echo -e "${BLUE}Cleaning up Terraform state files...${NC}"
+find tf-core tf-vso tf-static-elk tf-dynamic-elk -type f \( -name "terraform.tfstate*" -o -name ".terraform.lock.hcl" \) -delete 2>/dev/null
+find tf-core tf-vso tf-static-elk tf-dynamic-elk -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null
+echo -e "${GREEN}✓ Terraform state files removed${NC}"
+
+echo ""
+
+# ============================================================================
+# Clean up PersistentVolumes
+# ============================================================================
+
+echo -e "${BLUE}Cleaning up PersistentVolumes...${NC}"
+
+# Delete Released PVs from previous deployments
+RELEASED_PVS=$(kubectl get pv -o json | jq -r '.items[] | select(.status.phase == "Released" and (.spec.claimRef.namespace == "'"${NAMESPACE}"'" or (.spec.claimRef.name | contains("vault")))) | .metadata.name')
+
+if [ -n "$RELEASED_PVS" ]; then
+  echo -e "${YELLOW}Deleting Released PVs...${NC}"
+  echo "$RELEASED_PVS" | xargs -r kubectl delete pv 2>/dev/null || true
+  echo -e "${GREEN}✓ Released PVs deleted${NC}"
+else
+  echo -e "${YELLOW}No Released PVs to delete${NC}"
 fi
 
-# Remove fleet tokens directory
-if [ -d fleet-tokens ]; then
-  rm -rf fleet-tokens
-  echo -e "${GREEN}Removed fleet-tokens/${NC}"
+# Clean up Minikube hostpath storage (if using Minikube)
+if command -v minikube &>/dev/null && minikube status >/dev/null 2>&1; then
+  echo -e "${YELLOW}Cleaning up Minikube hostpath storage...${NC}"
+  minikube ssh -- "sudo rm -rf /tmp/hostpath-provisioner/default/*vault* /tmp/hostpath-provisioner/${NAMESPACE}/*" 2>/dev/null || true
+  echo -e "${GREEN}✓ Minikube storage cleaned${NC}"
 fi
 
-# Remove certificates directory
-if [ -d certs ]; then
-  rm -rf certs
-  echo -e "${GREEN}Removed certs/${NC}"
-fi
+echo ""
 
-# Remove vault audit logs directory
-if [ -d vault-audit-logs ]; then
-  rm -rf vault-audit-logs
-  echo -e "${GREEN}Removed vault-audit-logs/${NC}"
-fi
+# ============================================================================
+# Clean up local files and directories
+# ============================================================================
 
-echo -e "${GREEN}Stack destroyed${NC}"
+echo -e "${BLUE}Cleaning up local files...${NC}"
+
+[ -f vault-init.json ] && rm -f vault-init.json && echo -e "${GREEN}Removed vault-init.json${NC}"
+[ -f .env ] && rm -f .env && echo -e "${GREEN}Removed .env${NC}"
+
+[ -d vault-audit-logs ] && rm -rf vault-audit-logs && echo -e "${GREEN}Removed vault-audit-logs/${NC}"
+[ -d fleet-tokens ] && rm -rf fleet-tokens && echo -e "${GREEN}Removed fleet-tokens/${NC}"
+[ -d certs ] && rm -rf certs && echo -e "${GREEN}Removed certs/${NC}"
+
+echo ""
+echo -e "${GREEN}=== Stack Destroyed ===${NC}"
+echo -e "${YELLOW}Note: Minikube cluster remains running${NC}"
