@@ -33,7 +33,7 @@ module "kubernetes_secrets" {
 module "helm_releases" {
   source = "./modules/helm-releases"
 
-  namespace         = var.namespace
+  namespace = var.namespace
 
   depends_on = [
     kubernetes_namespace.vault_stack,
