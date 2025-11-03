@@ -64,6 +64,23 @@ resource "vault_kv_secret_v2" "elasticsearch_config" {
   depends_on = [vault_mount.kvv2]
 }
 
+# ============================================================================
+# Kubernetes Service Account
+# ============================================================================
+
+# Service Account for Static Secrets Demo
+# This service account is used by the webapp to authenticate to Vault
+# via VSO. Using a dedicated service account instead of "default" provides:
+# - Better security isolation
+# - Clearer audit trails in Vault logs
+# - Specific RBAC permissions if needed
+resource "kubernetes_service_account" "static_webapp" {
+  metadata {
+    name      = "elk-static-webapp-svc-acc"
+    namespace = var.namespace
+  }
+}
+
 # Static Secrets Vault Policy
 # Creates the policy in Vault from the policy document
 #
@@ -97,7 +114,10 @@ resource "vault_kubernetes_auth_backend_role" "static_secrets_role" {
   backend   = "kubernetes"
   role_name = "static-secrets-role"
   # Service accounts that can use this role
-  bound_service_account_names = ["default", "vault-secrets-operator-controller-manager"]
+  bound_service_account_names = [
+    kubernetes_service_account.static_webapp.metadata[0].name,
+    "vault-secrets-operator-controller-manager"
+  ]
   # Namespaces where these service accounts can authenticate
   bound_service_account_namespaces = [var.namespace]
   # Policies attached to the issued Vault token
@@ -105,7 +125,8 @@ resource "vault_kubernetes_auth_backend_role" "static_secrets_role" {
   # Token lifetime (1 hour)
   token_ttl = 3600
   # Required audience claim in JWT token
-  audience = "vault"
+  # Format: <namespace>-<app>-<purpose>
+  audience = "vault-stack-static-webapp-vault-auth"
 }
 
 # ============================================================================
@@ -144,10 +165,11 @@ resource "kubectl_manifest" "vault_auth_static" {
         role = "static-secrets-role"
 
         # Service account for authentication
-        serviceAccount = "default"
+        serviceAccount = kubernetes_service_account.static_webapp.metadata[0].name
 
         # Audience claim for JWT
-        audiences = ["vault"]
+        # Must match the audience configured in the Vault role
+        audiences = ["vault-stack-static-webapp-vault-auth"]
       }
     }
   })
@@ -201,7 +223,7 @@ resource "kubectl_manifest" "webapp_secret" {
       rolloutRestartTargets = [
         {
           kind = "Deployment"
-          name = "webapp-deployment"
+          name = "elk-dynamic-webapp"
         }
       ]
     }
@@ -251,7 +273,7 @@ resource "kubectl_manifest" "elasticsearch_secret" {
       rolloutRestartTargets = [
         {
           kind = "Deployment"
-          name = "webapp-deployment"
+          name = "elk-dynamic-webapp"
         }
       ]
     }
@@ -264,26 +286,7 @@ resource "kubectl_manifest" "elasticsearch_secret" {
 # Demo Application Deployment
 # ============================================================================
 
-# Webapp Deployment
-# Deploys a simple web application that demonstrates static secrets from VSO
-#
-# The webapp:
-# - Runs nginx serving a simple HTML page
-# - Displays secrets from Vault (synced by VSO)
-# - Auto-restarts when secrets change (via rolloutRestartTargets)
-#
-# The deployment YAML includes:
-# - Environment variables from the Kubernetes secrets
-# - Service for external access
-#
-# Access the webapp: kubectl port-forward svc/webapp-service 8080:80
-resource "kubectl_manifest" "webapp_deployment" {
-  # Load deployment YAML from file (contains Deployment + Service)
-  yaml_body = file("${path.module}/../../k8s/vso-demo/00_webapp-deployment-simple.yaml")
-
-  # Ensure secrets exist before deploying the app
-  depends_on = [
-    kubectl_manifest.webapp_secret,
-    kubectl_manifest.elasticsearch_secret
-  ]
-}
+# Note: The combined webapp (elk-dynamic-webapp) is deployed by the
+# tf-dynamic-elk module. This webapp displays both static and dynamic secrets.
+# The static secrets are configured here and will be automatically picked up
+# by the combined webapp when it starts.
