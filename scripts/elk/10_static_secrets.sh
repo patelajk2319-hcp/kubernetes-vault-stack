@@ -25,7 +25,7 @@ if ! kubectl get deployment vault-secrets-operator-controller-manager -n "$NAMES
 fi
 
 # Navigate to tf-static-elk directory
-cd "$PROJECT_ROOT/tf-static-elk"
+cd "$PROJECT_ROOT/terraform/tf-static-elk"
 
 # Initialize Terraform
 echo -e "\033[0;34mInitialising Terraform...\033[0m"
@@ -39,8 +39,9 @@ echo ""
 echo -e "\033[0;32m=== Static Secrets Demo Deployed Successfully! ===\033[0m"
 echo ""
 echo -e "\033[0;33mNext steps:\033[0m"
-echo "  1. Access the webapp: task vso-webapp"
-echo "  2. Update secrets: task vso-update"
+echo "  1. Deploy dynamic secrets (optional): task elk:dynamic"
+echo "  2. Access the combined webapp: task elk:webapp"
+echo "  3. Update secrets: task vso-update"
 echo ""
-echo -e "\033[0;34mThe webapp displays static secrets from Vault synced via VSO.\033[0m"
-echo -e "\033[0;34mSecrets are checked every 30 seconds and pods restart on changes.\033[0m"
+echo -e "\033[0;34mThe webapp displays both static secrets (from VSO) and dynamic credentials.\033[0m"
+echo -e "\033[0;34mStatic secrets are checked every 30 seconds and pods restart on changes.\033[0m"

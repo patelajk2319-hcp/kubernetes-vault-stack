@@ -18,10 +18,31 @@ if [ -n "$MISSING" ]; then
   exit 1
 fi
 
-kubectl cluster-info >/dev/null 2>&1 || {
-  echo -e "${YELLOW}Cannot connect to Kubernetes cluster${NC}"
-  exit 1
-}
+# Check if kubectl can connect to cluster
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  # Check if we're using Minikube
+  if command -v minikube >/dev/null 2>&1; then
+    echo -e "${YELLOW}Cannot connect to Kubernetes cluster. Attempting to start Minikube...${NC}"
+
+    # Try to start Minikube (idempotent - will start if stopped, or return success if already running)
+    if minikube start; then
+      echo -e "${GREEN}✓ Minikube started successfully${NC}"
+
+      # Wait for cluster to be ready
+      echo -e "${BLUE}Waiting for cluster to be ready...${NC}"
+      kubectl wait --for=condition=Ready nodes --all --timeout=90s
+      echo -e "${GREEN}✓ Cluster is ready${NC}"
+    else
+      echo -e "${RED}Failed to start Minikube${NC}"
+      echo -e "${YELLOW}Try running 'minikube start' manually to see the error${NC}"
+      exit 1
+    fi
+  else
+    echo -e "${RED}Cannot connect to Kubernetes cluster${NC}"
+    echo -e "${YELLOW}Please ensure your cluster is running and kubectl is configured correctly${NC}"
+    exit 1
+  fi
+fi
 
 # Check for Vault Enterprise licence file
 LICENSE_FILE="licenses/vault-enterprise/license.lic"

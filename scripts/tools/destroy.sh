@@ -12,6 +12,36 @@ echo -e "${BLUE}=== Destroying Vault Stack ===${NC}"
 echo ""
 
 # ============================================================================
+# Ensure Kubernetes cluster is accessible for proper cleanup
+# ============================================================================
+
+# Check if kubectl can connect to cluster
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  # Check if we're using Minikube
+  if command -v minikube >/dev/null 2>&1; then
+    echo -e "${YELLOW}Cannot connect to Kubernetes cluster. Starting Minikube for proper cleanup...${NC}"
+
+    # Try to start Minikube
+    if minikube start; then
+      echo -e "${GREEN}✓ Minikube started successfully${NC}"
+
+      # Wait for cluster to be ready
+      echo -e "${BLUE}Waiting for cluster to be ready...${NC}"
+      kubectl wait --for=condition=Ready nodes --all --timeout=90s
+      echo -e "${GREEN}✓ Cluster is ready${NC}"
+    else
+      echo -e "${RED}Failed to start Minikube${NC}"
+      echo -e "${YELLOW}Will proceed with cleanup of local files only${NC}"
+    fi
+  else
+    echo -e "${YELLOW}Kubernetes cluster not accessible and Minikube not found${NC}"
+    echo -e "${YELLOW}Will proceed with cleanup of local files only${NC}"
+  fi
+fi
+
+echo ""
+
+# ============================================================================
 # Destroy Terraform-managed resources (in reverse dependency order)
 # ============================================================================
 
@@ -30,11 +60,11 @@ if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
 fi
 
 # 1. Destroy dynamic ELK credentials demo
-if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
+if [ -f "terraform/tf-dynamic-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying dynamic ELK credentials...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-dynamic-elk
+    cd terraform/tf-dynamic-elk
 
     # Force disable database mount to bypass lease revocation issues
     echo -e "${YELLOW}Force disabling database mount (bypassing lease revocation)...${NC}"
@@ -58,17 +88,17 @@ if [ -f "tf-dynamic-elk/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-dynamic-elk/terraform.tfstate*
+    rm -f terraform/tf-dynamic-elk/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
 
 # 2. Destroy static ELK secrets demo
-if [ -f "tf-static-elk/terraform.tfstate" ]; then
+if [ -f "terraform/tf-static-elk/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying static ELK secrets...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-static-elk
+    cd terraform/tf-static-elk
     echo -e "${YELLOW}Initialising Terraform...${NC}"
     terraform init -upgrade
     echo -e "${YELLOW}Running terraform destroy...${NC}"
@@ -81,17 +111,17 @@ if [ -f "tf-static-elk/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-static-elk/terraform.tfstate*
+    rm -f terraform/tf-static-elk/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
 
 # 3. Destroy VSO infrastructure
-if [ -f "tf-vso/terraform.tfstate" ]; then
+if [ -f "terraform/tf-vso/terraform.tfstate" ]; then
   echo -e "${BLUE}Destroying VSO infrastructure...${NC}"
 
   if [ "$VAULT_ACCESSIBLE" = true ]; then
-    cd tf-vso
+    cd terraform/tf-vso
     echo -e "${YELLOW}Initialising Terraform...${NC}"
     terraform init -upgrade
     echo -e "${YELLOW}Running terraform destroy...${NC}"
@@ -104,7 +134,7 @@ if [ -f "tf-vso/terraform.tfstate" ]; then
     cd "$PROJECT_ROOT"
   else
     echo -e "${YELLOW}Skipping Terraform destroy (Vault inaccessible) - will clean up via kubectl${NC}"
-    rm -f tf-vso/terraform.tfstate*
+    rm -f terraform/tf-vso/terraform.tfstate*
     echo -e "${GREEN}✓ State files removed${NC}"
   fi
 fi
@@ -186,16 +216,28 @@ echo ""
 # ============================================================================
 
 echo -e "${BLUE}Destroying core infrastructure...${NC}"
-cd "$PROJECT_ROOT/tf-core"
+cd "$PROJECT_ROOT/terraform/tf-core"
+
+# Check if Kubernetes cluster is accessible
+K8S_ACCESSIBLE=false
+if kubectl cluster-info >/dev/null 2>&1; then
+  K8S_ACCESSIBLE=true
+fi
+
 if [ -f "terraform.tfstate" ]; then
-  echo -e "${YELLOW}Initialising Terraform...${NC}"
-  terraform init -upgrade
-  echo -e "${YELLOW}Running terraform destroy (this may take several minutes)...${NC}"
-  if terraform destroy -auto-approve; then
-    echo -e "${GREEN}✓ Core infrastructure destroyed${NC}"
+  if [ "$K8S_ACCESSIBLE" = true ]; then
+    echo -e "${YELLOW}Initialising Terraform...${NC}"
+    terraform init -upgrade
+    echo -e "${YELLOW}Running terraform destroy (this may take several minutes)...${NC}"
+    if terraform destroy -auto-approve; then
+      echo -e "${GREEN}✓ Core infrastructure destroyed${NC}"
+    else
+      echo -e "${RED}✗ Failed to destroy core infrastructure${NC}"
+      exit 1
+    fi
   else
-    echo -e "${RED}✗ Failed to destroy core infrastructure${NC}"
-    exit 1
+    echo -e "${YELLOW}Kubernetes cluster not accessible - skipping Terraform destroy${NC}"
+    echo -e "${YELLOW}State file will be cleaned up below${NC}"
   fi
 else
   echo -e "${YELLOW}No state file, skipping${NC}"
@@ -210,9 +252,36 @@ echo ""
 # ============================================================================
 
 echo -e "${BLUE}Cleaning up Terraform state files...${NC}"
-find tf-core tf-vso tf-static-elk tf-dynamic-elk -type f \( -name "terraform.tfstate*" -o -name ".terraform.lock.hcl" \) -delete 2>/dev/null
-find tf-core tf-vso tf-static-elk tf-dynamic-elk -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null
+find terraform/tf-core terraform/tf-vso terraform/tf-static-elk terraform/tf-dynamic-elk -type f \( -name "terraform.tfstate*" -o -name ".terraform.lock.hcl" \) -delete 2>/dev/null
+find terraform/tf-core terraform/tf-vso terraform/tf-static-elk terraform/tf-dynamic-elk -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null
 echo -e "${GREEN}✓ Terraform state files removed${NC}"
+
+echo ""
+
+# ============================================================================
+# Clean up orphaned namespace (if exists outside Terraform state)
+# ============================================================================
+
+if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+  echo -e "${BLUE}Cleaning up namespace ${NAMESPACE}...${NC}"
+
+  # Delete any remaining resources in the namespace
+  echo -e "${YELLOW}Deleting all resources in namespace...${NC}"
+  kubectl delete all --all -n "${NAMESPACE}" --timeout=60s 2>/dev/null || true
+
+  # Force delete the namespace
+  echo -e "${YELLOW}Deleting namespace...${NC}"
+  kubectl delete namespace "${NAMESPACE}" --timeout=60s 2>/dev/null || {
+    # If regular delete hangs, force remove finalizers and delete
+    echo -e "${YELLOW}Forcing namespace deletion...${NC}"
+    kubectl get namespace "${NAMESPACE}" -o json | \
+      jq '.spec.finalizers = []' | \
+      kubectl replace --raw "/api/v1/namespaces/${NAMESPACE}/finalize" -f - >/dev/null 2>&1 || true
+  }
+  echo -e "${GREEN}✓ Namespace cleaned up${NC}"
+else
+  echo -e "${YELLOW}Namespace ${NAMESPACE} does not exist, skipping${NC}"
+fi
 
 echo ""
 

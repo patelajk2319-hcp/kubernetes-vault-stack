@@ -13,16 +13,6 @@ resource "vault_mount" "database" {
 
 # Elasticsearch Database Connection
 # Configures Vault's connection to Elasticsearch for dynamic credential generation
-#
-# This resource:
-# - Connects to Elasticsearch running in Podman on the host (host.minikube.internal:9200)
-# - Uses admin credentials (elastic user) to create/delete dynamic users
-# - Verifies the connection on apply to ensure Elasticsearch is accessible
-# - Restricts which Vault roles can use this connection (allowed_roles)
-#
-# Security note:
-# - insecure=true is used because we're using self-signed certs in this demo
-# - For production, use proper TLS verification with the CA certificate
 resource "vault_database_secret_backend_connection" "elasticsearch" {
   backend       = vault_mount.database.path
   name          = "elasticsearch"
@@ -37,7 +27,6 @@ resource "vault_database_secret_backend_connection" "elasticsearch" {
     password = var.elasticsearch_password
 
     # Skip TLS verification for demo (self-signed certs)
-    # For production, set to false and provide ca_cert
     insecure = true
   }
 
@@ -54,19 +43,9 @@ resource "vault_database_secret_backend_role" "elasticsearch" {
   # Default TTL: initial lifetime of credentials (5 minutes)
   default_ttl = var.default_ttl
 
-  # Max TTL: maximum time credentials can exist (5 minutes)
   # After this, VSO must request NEW credentials
   max_ttl = var.max_ttl
 
-  # Elasticsearch roles assignment
-  # Assigns pre-existing Elasticsearch roles to dynamically created users
-  #
-  # This approach uses elasticsearch_roles instead of elasticsearch_role_definition
-  # because we need to assign the reserved 'kibana_admin' role for Kibana UI login.
-  #
-  # Roles assigned:
-  # - vault_es_role: Custom role with ES index/cluster permissions (created via ES API)
-  # - kibana_admin: Reserved Elasticsearch role required for Kibana UI login
   creation_statements = [
     jsonencode({
       elasticsearch_roles = ["vault_es_role", "kibana_admin"]
@@ -87,13 +66,30 @@ resource "vault_policy" "elasticsearch_dynamic" {
 # Update existing Kubernetes auth role to include dynamic credentials policy
 # Note: This assumes kubernetes auth is already configured by tf-vso
 resource "vault_kubernetes_auth_backend_role" "elasticsearch_dynamic_role" {
-  backend                          = "kubernetes"
-  role_name                        = "elasticsearch-dynamic-role"
-  bound_service_account_names      = ["default", "vault-secrets-operator-controller-manager"]
+  backend   = "kubernetes"
+  role_name = "elasticsearch-dynamic-role"
+  bound_service_account_names = [
+    kubernetes_service_account.dynamic_webapp.metadata[0].name,
+    "vault-secrets-operator-controller-manager"
+  ]
   bound_service_account_namespaces = [var.namespace]
   token_policies                   = [vault_policy.elasticsearch_dynamic.name]
   token_ttl                        = 3600
-  audience                         = "vault"
+  # Required audience claim in JWT token
+  # Format: <namespace>-<app>-<purpose>
+  audience = "vault-stack-dynamic-webapp-vault-auth"
+}
+
+# ============================================================================
+# Kubernetes Service Account
+# ============================================================================
+
+# This service account is used by the webapp to authenticate to Vault
+resource "kubernetes_service_account" "dynamic_webapp" {
+  metadata {
+    name      = "elk-dynamic-webapp-svc-acc"
+    namespace = var.namespace
+  }
 }
 
 # ============================================================================
@@ -108,8 +104,6 @@ resource "vault_kubernetes_auth_backend_role" "elasticsearch_dynamic_role" {
 # - References the shared VaultConnection (created by tf-vso module)
 # - Authenticates as the elasticsearch-dynamic-role
 # - Allows VSO to request dynamic Elasticsearch credentials from Vault
-#
-# The default service account is used, which VSO controller injects into the pod
 resource "kubectl_manifest" "vault_auth_dynamic" {
   yaml_body = yamlencode({
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -122,7 +116,7 @@ resource "kubectl_manifest" "vault_auth_dynamic" {
       # Reference to the shared VaultConnection created by tf-vso
       vaultConnectionRef = "vault-connection"
 
-      # Use Kubernetes auth method (service account tokens)
+      # Use Kubernetes auth method
       method = "kubernetes"
       mount  = "kubernetes"
 
@@ -131,10 +125,11 @@ resource "kubectl_manifest" "vault_auth_dynamic" {
         role = "elasticsearch-dynamic-role"
 
         # Service account that will authenticate to Vault
-        serviceAccount = "default"
+        serviceAccount = kubernetes_service_account.dynamic_webapp.metadata[0].name
 
         # Audience claim for the JWT token
-        audiences = ["vault"]
+        # Must match the audience configured in the Vault role
+        audiences = ["vault-stack-dynamic-webapp-vault-auth"]
       }
     }
   })
@@ -151,13 +146,8 @@ resource "kubectl_manifest" "vault_auth_dynamic" {
 # - Generates NEW credentials when the lease can no longer be renewed (every 5 minutes with current config)
 # - Automatically syncs credentials to a Kubernetes secret
 # - Revokes old credentials when new ones are generated
-# - Updates mounted files in running pods (zero-downtime rotation)
-#
-# Credential lifecycle:
-# - Every 60s: VSO renews the lease (same username/password)
-# - Every 5min: Vault refuses renewal (max_ttl reached), VSO requests new credentials
-# - Immediately: Kubernetes updates the secret and mounted files in pods
-# - Pods read fresh credentials from /vault/secrets/username and /vault/secrets/password
+# - Updates mounted files in running pods 
+
 resource "kubectl_manifest" "elasticsearch_dynamic_secret" {
   yaml_body = yamlencode({
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -191,16 +181,10 @@ resource "kubectl_manifest" "elasticsearch_dynamic_secret" {
       refreshAfter = "60s"
 
       # Automatically revoke credentials in Vault when they're rotated
-      # This ensures old credentials are immediately invalidated
       revoke = true
-
-      # NOTE: rolloutRestartTargets removed for zero-downtime rotation
-      # Pods use volume mounts which are auto-updated by Kubernetes
-      # Apps read from /vault/secrets/* files on every request
     }
   })
 
-  # Ensure dependencies are created first
   depends_on = [
     kubectl_manifest.vault_auth_dynamic,
     vault_database_secret_backend_role.elasticsearch

@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/vault"
       version = "~> 4.5"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
     kubectl = {
       source  = "gavinbunney/kubectl"
       version = "~> 1.14"
@@ -23,6 +27,11 @@ provider "vault" {
   # Address and token are read from environment variables:
   # - VAULT_ADDR (e.g., http://localhost:8200)
   # - VAULT_TOKEN (from .env file)
+}
+
+# Kubernetes provider for managing Kubernetes resources
+provider "kubernetes" {
+  config_path = "~/.kube/config"
 }
 
 # kubectl provider for applying Kubernetes manifests

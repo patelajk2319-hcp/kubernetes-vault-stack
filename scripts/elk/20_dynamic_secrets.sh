@@ -13,10 +13,10 @@ echo -e "${BLUE}=== Deploying Elasticsearch Dynamic Credentials ===${NC}"
 echo ""
 
 # Change to tf-dynamic-elk directory
-cd "$(dirname "$0")/../../tf-dynamic-elk"
+cd "$(dirname "$0")/../../terraform/tf-dynamic-elk"
 
 # Check if .env exists
-if [ ! -f "../.env" ]; then
+if [ ! -f "../../.env" ]; then
   echo -e "${RED}Error: .env file not found${NC}"
   echo -e "${YELLOW}Run 'task init' and 'task unseal' first${NC}"
   exit 1
@@ -24,7 +24,7 @@ fi
 
 # Source environment variables (VAULT_ADDR, VAULT_TOKEN)
 echo -e "${BLUE}Loading Vault environment variables...${NC}"
-source ../.env
+source ../../.env
 
 # Verify VAULT_TOKEN is set
 if [ -z "$VAULT_TOKEN" ]; then
@@ -53,7 +53,7 @@ if ! kubectl get vaultconnection vault-connection -n "${NAMESPACE}" > /dev/null 
   echo -e "${YELLOW}Warning: VaultConnection not found. Running 'task vso' first...${NC}"
   cd ..
   NAMESPACE="${NAMESPACE}" ./scripts/vso/00_deploy_vso.sh
-  cd tf-dynamic-elk
+  cd terraform/tf-dynamic-elk
 fi
 
 # Create custom Elasticsearch role (required for dynamic credentials)
@@ -124,6 +124,6 @@ echo -e "${YELLOW}Secrets:${NC}"
 kubectl get secret elasticsearch-dynamic-secret -n "${NAMESPACE}" 2>/dev/null && echo "✅ Dynamic secret created" || echo "⏳ Waiting for secret creation"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
-echo -e "  - ${BLUE}task elk-dynamic-webapp${NC}  - Access demo application"
-echo -e "  - ${BLUE}task elk-dynamic-test${NC}   - Test credential rotation"
+echo -e "  - ${BLUE}task elk:webapp${NC}  - Access combined webapp (displays both static and dynamic secrets)"
+echo -e "  - ${BLUE}task elk:rotate${NC}  - Force credential rotation"
 echo ""

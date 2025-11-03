@@ -47,14 +47,6 @@ tasks:
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/vso/00_deploy_vso.sh
 
-  # VSO: Access demo webapp
-  vso-webapp:
-    desc: Access VSO demo webapp at http://localhost:8080
-    cmds:
-      - echo "Opening VSO demo at http://localhost:8080"
-      - echo "Press Ctrl+C to stop"
-      - kubectl port-forward -n {{.NAMESPACE}} svc/webapp-service 8080:80
-
   # VSO: Update secrets to test synchronisation
   vso-update:
     desc: Update secrets in Vault to test VSO sync
@@ -65,7 +57,7 @@ tasks:
           username="user-$(date +%s)" \
           password="pass-$(date +%s)"
         echo "Secret updated! VSO will sync within 30 seconds."
-        echo "Refresh http://localhost:8080 to see changes"
+        echo "Refresh http://localhost:8090 to see changes in the combined webapp"
 
   # ELK Demo Namespace
   elk:
@@ -86,11 +78,11 @@ tasks:
       - NAMESPACE={{.NAMESPACE}} ./scripts/elk/20_dynamic_secrets.sh
 
   elk:webapp:
-    desc: Access demo webapp at http://localhost:8090
+    desc: Access combined webapp at http://localhost:8090 (displays both static and dynamic secrets)
     aliases: [web]
     cmds:
-      - echo "Opening Elasticsearch dynamic credentials demo at http://localhost:8090"
-      - echo "Lease renewed every 60s | Credentials rotate every 5 minutes"
+      - echo "Opening combined Vault secrets demo at http://localhost:8090"
+      - echo "Displays both static secrets (VSO) and dynamic credentials (database secrets engine)"
       - echo "Press Ctrl+C to stop"
       - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
 
