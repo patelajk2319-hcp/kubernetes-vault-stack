@@ -1,16 +1,7 @@
 # ============================================================================
 # Static Elasticsearch Secrets Demo
 # ============================================================================
-#
-# This module demonstrates Vault's KV v2 secrets engine with static secrets
-# synchronised to Kubernetes via the Vault Secrets Operator (VSO).
-#
-# It shows how to:
-# 1. Store static secrets in Vault's KV v2 engine
-# 2. Configure authentication and policies for VSO
-# 3. Sync secrets from Vault to Kubernetes automatically
-# 4. Deploy applications that consume Vault secrets
-#
+
 
 # KV v2 Secrets Engine Mount
 resource "vault_mount" "kvv2" {
@@ -23,8 +14,7 @@ resource "vault_mount" "kvv2" {
 }
 
 # Webapp Configuration Secret
-# Stores static credentials for the demo webapp
-# VSO will sync this to a Kubernetes secret named "webapp-secret"
+# Stores static credentials for the demo
 resource "vault_kv_secret_v2" "webapp_config" {
   mount = vault_mount.kvv2.path
   name  = "webapp/config"
@@ -70,10 +60,6 @@ resource "vault_kv_secret_v2" "elasticsearch_config" {
 
 # Service Account for Static Secrets Demo
 # This service account is used by the webapp to authenticate to Vault
-# via VSO. Using a dedicated service account instead of "default" provides:
-# - Better security isolation
-# - Clearer audit trails in Vault logs
-# - Specific RBAC permissions if needed
 resource "kubernetes_service_account" "static_webapp" {
   metadata {
     name      = "elk-static-webapp-svc-acc"
@@ -83,9 +69,6 @@ resource "kubernetes_service_account" "static_webapp" {
 
 # Static Secrets Vault Policy
 # Creates the policy in Vault from the policy document
-#
-# This policy is attached to the Kubernetes auth role below,
-# granting VSO the permissions defined in the policy document
 resource "vault_policy" "static_secrets_policy" {
   name   = "static-secrets-policy"
   policy = data.vault_policy_document.static_secrets_policy.hcl
@@ -179,19 +162,7 @@ resource "kubectl_manifest" "vault_auth_static" {
 
 # VaultStaticSecret Resource - Webapp Configuration
 # Syncs the webapp secret from Vault to a Kubernetes secret
-#
-# This creates a VaultStaticSecret CRD that:
-# - Fetches webapp/config from Vault's KV v2 engine
-# - Creates/updates a Kubernetes secret named "webapp-secret"
-# - Refreshes every 30 seconds to detect changes
-# - Triggers deployment restart when secret changes (rolloutRestartTargets)
-#
-# Secret lifecycle:
-# 1. VSO authenticates to Vault using VaultAuth
-# 2. VSO reads kvv2/data/webapp/config
-# 3. VSO creates Kubernetes secret with data (username, password)
-# 4. Every 30s, VSO checks if Vault secret changed
-# 5. If changed, VSO updates K8s secret and restarts webapp deployment
+
 resource "kubectl_manifest" "webapp_secret" {
   yaml_body = yamlencode({
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -217,15 +188,6 @@ resource "kubectl_manifest" "webapp_secret" {
 
       # Check for updates every 30 seconds
       refreshAfter = "30s"
-
-      # Restart deployment when secret changes
-      # This ensures pods pick up new values
-      rolloutRestartTargets = [
-        {
-          kind = "Deployment"
-          name = "elk-dynamic-webapp"
-        }
-      ]
     }
   })
 
@@ -234,15 +196,7 @@ resource "kubectl_manifest" "webapp_secret" {
 
 # VaultStaticSecret Resource - Elasticsearch Configuration
 # Syncs the Elasticsearch secret from Vault to a Kubernetes secret
-#
-# This creates a VaultStaticSecret CRD that:
-# - Fetches elasticsearch/config from Vault's KV v2 engine
-# - Creates/updates a Kubernetes secret named "elasticsearch-secret"
-# - Refreshes every 30 seconds
-# - Triggers deployment restart when secret changes
-#
-# The Elasticsearch secret contains connection details and static credentials
-# For dynamic, time-limited credentials, see tf-dynamic-elk module
+
 resource "kubectl_manifest" "elasticsearch_secret" {
   yaml_body = yamlencode({
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -268,25 +222,8 @@ resource "kubectl_manifest" "elasticsearch_secret" {
 
       # Check for updates every 30 seconds
       refreshAfter = "30s"
-
-      # Restart deployment when secret changes
-      rolloutRestartTargets = [
-        {
-          kind = "Deployment"
-          name = "elk-dynamic-webapp"
-        }
-      ]
     }
   })
 
   depends_on = [kubectl_manifest.vault_auth_static]
 }
-
-# ============================================================================
-# Demo Application Deployment
-# ============================================================================
-
-# Note: The combined webapp (elk-dynamic-webapp) is deployed by the
-# tf-dynamic-elk module. This webapp displays both static and dynamic secrets.
-# The static secrets are configured here and will be automatically picked up
-# by the combined webapp when it starts.

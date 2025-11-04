@@ -57,7 +57,7 @@ tasks:
           username="user-$(date +%s)" \
           password="pass-$(date +%s)"
         echo "Secret updated! VSO will sync within 30 seconds."
-        echo "Refresh http://localhost:8090 to see changes in the combined webapp"
+        echo "Use 'task info' to view updated credentials"
 
   # ELK Demo Namespace
   elk:
@@ -76,25 +76,6 @@ tasks:
     aliases: [dynamic]
     cmds:
       - NAMESPACE={{.NAMESPACE}} ./scripts/elk/20_dynamic_secrets.sh
-
-  elk:webapp:
-    desc: Access combined webapp at http://localhost:8090 (displays both static and dynamic secrets)
-    aliases: [web]
-    cmds:
-      - echo "Opening combined Vault secrets demo at http://localhost:8090"
-      - echo "Displays both static secrets (VSO) and dynamic credentials (database secrets engine)"
-      - echo "Press Ctrl+C to stop"
-      - kubectl port-forward -n {{.NAMESPACE}} svc/elk-dynamic-webapp-service 8090:80
-
-  elk:rotate:
-    desc: Force credential rotation by restarting the demo pod
-    aliases: [rotate]
-    cmds:
-      - |
-        echo "Forcing credential rotation..."
-        kubectl delete pod -n {{.NAMESPACE}} -l app=elk-dynamic-webapp
-        echo "Pod restarting with new dynamic credentials..."
-        echo "Wait a few seconds then check http://localhost:8090"
 
   # Clean/destroy everything (Terraform)
   clean:

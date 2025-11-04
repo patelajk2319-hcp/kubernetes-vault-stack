@@ -67,14 +67,20 @@ resource "vault_policy" "elasticsearch_dynamic" {
 # Note: This assumes kubernetes auth is already configured by tf-vso
 resource "vault_kubernetes_auth_backend_role" "elasticsearch_dynamic_role" {
   backend   = "kubernetes"
+  #the role name below must match the k8s crd (kubectl_manifest: vault_auth_dynamic) 
   role_name = "elasticsearch-dynamic-role"
+
   bound_service_account_names = [
     kubernetes_service_account.dynamic_webapp.metadata[0].name,
     "vault-secrets-operator-controller-manager"
   ]
+
   bound_service_account_namespaces = [var.namespace]
+  # bind the Vault Policy to this role, so that only this role can access credentials
+  # in other words - when login in using this auth method, these are the secrets i have access to
   token_policies                   = [vault_policy.elasticsearch_dynamic.name]
   token_ttl                        = 3600
+
   # Required audience claim in JWT token
   # Format: <namespace>-<app>-<purpose>
   audience = "vault-stack-dynamic-webapp-vault-auth"
@@ -189,22 +195,4 @@ resource "kubectl_manifest" "elasticsearch_dynamic_secret" {
     kubectl_manifest.vault_auth_dynamic,
     vault_database_secret_backend_role.elasticsearch
   ]
-}
-
-# ============================================================================
-# Demo Application Deployment
-# ============================================================================
-
-# Deploy demo application deployment that uses dynamic Elasticsearch credentials
-resource "kubectl_manifest" "elk_dynamic_webapp_deployment" {
-  yaml_body = local.webapp_yaml_docs[0]
-
-  depends_on = [kubectl_manifest.elasticsearch_dynamic_secret]
-}
-
-# Deploy demo application service
-resource "kubectl_manifest" "elk_dynamic_webapp_service" {
-  yaml_body = local.webapp_yaml_docs[1]
-
-  depends_on = [kubectl_manifest.elk_dynamic_webapp_deployment]
 }

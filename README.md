@@ -87,10 +87,8 @@ task status             # Show status of all components
 task info               # Show access information and credentials
 task logs               # View logs for a service (usage: task logs -- <service-name>)
 task vso                # Configure and deploy Vault Secrets Operator (static secrets)
-task vso-webapp         # Access VSO demo webapp
 task vso-update         # Update secrets to test VSO synchronisation
 task elk-dynamic        # Deploy Elasticsearch dynamic credentials demo (alias: dynamic)
-task elk-dynamic-webapp # Access Elasticsearch dynamic credentials demo
 task elk-dynamic-test   # Force credential rotation
 task elk-dynamic-creds  # View current dynamic credentials
 task clean              # Destroy the entire stack (Terraform)
@@ -179,11 +177,11 @@ Demonstrates VSO synchronising static secrets from Vault to Kubernetes.
 # After deploying and unsealing Vault, run the VSO task
 task vso
 
-# Access demo webapp
-task vso-webapp  # http://localhost:8080
-
 # Update secrets to test synchronisation
 task vso-update
+
+# View credentials
+task info
 ```
 
 ### Elasticsearch Dynamic Credentials
@@ -194,14 +192,11 @@ Demonstrates Vault's database secrets engine generating time-limited, automatica
 # Deploy dynamic credentials demo
 task elk-dynamic  # or: task dynamic
 
-# Access demo webapp (shows live credential rotation)
-task elk-dynamic-webapp  # http://localhost:8090
-
-# Force credential rotation (restart pod with new credentials)
-task elk-dynamic-test
-
 # View current credentials
 task elk-dynamic-creds
+
+# View all access information
+task info
 ```
 
 **Key Features:**
