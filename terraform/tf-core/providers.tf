@@ -18,10 +18,6 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.4"
     }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
-    }
     time = {
       source  = "hashicorp/time"
       version = "~> 0.9"
@@ -37,9 +33,5 @@ provider "helm" {
   kubernetes {
     config_path = "~/.kube/config"
   }
-}
-
-provider "kubectl" {
-  config_path = "~/.kube/config"
 }
 

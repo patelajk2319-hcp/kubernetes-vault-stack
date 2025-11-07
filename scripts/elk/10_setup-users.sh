@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -eu
 
 echo "=== Elasticsearch User Setup with TLS ==="
 

@@ -6,9 +6,9 @@ terraform {
       source  = "hashicorp/vault"
       version = "~> 4.5"
     }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
     }
   }
 }
@@ -21,7 +21,7 @@ provider "vault" {
   # - VAULT_TOKEN (from .env file)
 }
 
-# kubectl provider for applying Kubernetes manifests
-provider "kubectl" {
+# Kubernetes provider for managing Kubernetes resources
+provider "kubernetes" {
   config_path = "~/.kube/config"
 }

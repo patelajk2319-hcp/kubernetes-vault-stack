@@ -3,15 +3,15 @@
 # This script performs post-deployment configuration for Elastic Fleet after all containers are running.
 # It verifies Fleet Server health, enrolls Elastic Agent if needed, and checks agent status in Kibana.
 
-set -e  # Exit immediately if a command fails
+set -euo pipefail
 
 # -----------------------
-# Color definitions for better readability in logs
+# Colour definitions for better readability in logs
 # -----------------------
 GREEN='\033[0;32m'    # Green text for success messages
 YELLOW='\033[1;33m'   # Yellow text for warnings
 BLUE='\033[0;34m'     # Blue text for informational messages
-NC='\033[0m'          # No Color (reset text color to default)
+NC='\033[0m'          # No Colour (reset text colour to default)
 
 # -----------------------
 # Fixed container names for kubernetes-vault-stack
@@ -33,7 +33,7 @@ check_service() {
     local service_name=$1
     local url=$2
     local max_attempts=$3
-    
+
     echo -e "${BLUE}Checking $service_name...${NC}"
     for i in $(seq 1 $max_attempts); do
         if curl -k -s --connect-timeout 5 "$url" >/dev/null 2>&1; then
@@ -66,29 +66,29 @@ AGENT_STATUS=$(podman exec "$ELASTIC_AGENT_CONTAINER" elastic-agent status 2>/de
 if echo "$AGENT_STATUS" | grep -q "Connected"; then
     echo -e "${GREEN}✅ Elastic Agent is already enrolled and connected${NC}"
 else
-    echo -e "${BLUE}Enrolling Elastic Agent...${NC}"
-    
-    # Retrieve the enrollment token from the shared volume
+    echo -e "${BLUE}Enroling Elastic Agent...${NC}"
+
+    # Retrieve the enrolment token from the shared volume
     TOKEN=$(cat ./fleet-tokens/enrollment-token 2>/dev/null)
-    
+
     if [ -z "$TOKEN" ]; then
-        echo -e "${YELLOW}❌ No enrollment token found${NC}"
+        echo -e "${YELLOW}❌ No enrolment token found${NC}"
         exit 1
     fi
-    
-    echo -e "${BLUE}Found enrollment token${NC}"
-    
-    # Enroll the Elastic Agent with Fleet Server
+
+    echo -e "${BLUE}Found enrolment token${NC}"
+
+    # Enrol the Elastic Agent with Fleet Server
     podman exec "$ELASTIC_AGENT_CONTAINER" elastic-agent enroll \
         --url=http://fleet-server:8220 \
         --enrollment-token="$TOKEN" \
         --insecure \
         --force
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Elastic Agent enrolled successfully${NC}"
     else
-        echo -e "${YELLOW}❌ Failed to enroll Elastic Agent${NC}"
+        echo -e "${YELLOW}❌ Failed to enrol Elastic Agent${NC}"
         exit 1
     fi
 fi
@@ -106,7 +106,7 @@ AGENTS_RESPONSE=$(curl -k -s -X GET "https://localhost:5601/api/fleet/agents" \
 if echo "$AGENTS_RESPONSE" | grep -q '"status":"online"'; then
     AGENT_COUNT=$(echo "$AGENTS_RESPONSE" | grep -o '"status":"online"' | wc -l)
     echo -e "${GREEN}✅ Found $AGENT_COUNT online agent(s) in Kibana${NC}"
-    
+
     # Display basic details for each agent
     echo -e "${BLUE}Agent Details:${NC}"
     echo "$AGENTS_RESPONSE" | jq -r '.list[] | "  - ID: \(.id) | Status: \(.status) | Type: \(.type) | Policy: \(.policy_id)"' 2>/dev/null || echo "  (Raw response parsing failed, but agents are online)"
@@ -152,7 +152,7 @@ for i in {1..3}; do
 done
 
 if [ "$AGENT_STATUS_SUCCESS" = false ]; then
-    echo -e "${YELLOW}Note: Agent daemon status check failed, but this is normal during restart after enrollment${NC}"
+    echo -e "${YELLOW}Note: Agent daemon status check failed, but this is normal during restart after enrolment${NC}"
 fi
 
 # ----------------------------------

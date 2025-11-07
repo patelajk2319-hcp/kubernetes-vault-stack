@@ -2,7 +2,7 @@
 
 # Summary of what this script accomplishes:
 # 1. Creates a Certificate Authority (CA) that acts as a trusted root
-# 2. Generates TLS certificates for Elasticsearch and Kibana signed by the CA  
+# 2. Generates TLS certificates for Elasticsearch and Kibana signed by the CA
 # 3. Generates TLS certificate for Fleet Server - For Vault Integration
 # 4. Configures certificates with proper Subject Alternative Names for flexible hostname/IP usage
 # 5. Sets secure file permissions to protect private keys
@@ -10,16 +10,16 @@
 #
 # The resulting certificates enable encrypted TLS communication between:
 # - Clients and Elasticsearch
-# - Clients and Kibana  
+# - Clients and Kibana
 # - Elasticsearch and Kibana
 # - Fleet Server and Elastic Agent (NEW)
 
 
-# Define color codes for colored terminal output
+# Define colour codes for coloured terminal output
 GREEN='\033[0;32m'    # Green text for success messages
 YELLOW='\033[1;33m'   # Yellow text for warnings
 BLUE='\033[0;34m'     # Blue text for informational messages
-NC='\033[0m'          # No Color - resets text color to default
+NC='\033[0m'          # No Colour - resets text colour to default
 
 # Configuration variables
 CERT_VALIDITY_DAYS=365  # Certificates will be valid for 1 year
@@ -105,7 +105,7 @@ extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = kibana      # Allow connections to "kibana" hostname  
+DNS.1 = kibana      # Allow connections to "kibana" hostname
 DNS.2 = localhost   # Allow connections to "localhost"
 IP.1 = 127.0.0.1   # Allow connections to local IP address
 EOF
@@ -157,7 +157,7 @@ echo -e "${BLUE}🧹 Cleaning up temporary files${NC}"
 
 # Remove temporary files that are no longer needed
 # CSR files: only needed during certificate creation
-# Extension files: only needed during signing process  
+# Extension files: only needed during signing process
 # Serial file: automatically created, not needed to keep
 rm -f certs/elasticsearch/elasticsearch.csr certs/elasticsearch/elasticsearch.ext
 rm -f certs/kibana/kibana.csr certs/kibana/kibana.ext

@@ -127,8 +127,8 @@ resource "vault_kubernetes_auth_backend_role" "static_secrets_role" {
 #
 # The default service account is used, which is available in all pods
 # unless a different service account is specified
-resource "kubectl_manifest" "vault_auth_static" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "vault_auth_static" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultAuth"
     metadata = {
@@ -155,7 +155,7 @@ resource "kubectl_manifest" "vault_auth_static" {
         audiences = ["vault-stack-static-webapp-vault-auth"]
       }
     }
-  })
+  }
 
   depends_on = [vault_kubernetes_auth_backend_role.static_secrets_role]
 }
@@ -163,8 +163,8 @@ resource "kubectl_manifest" "vault_auth_static" {
 # VaultStaticSecret Resource - Webapp Configuration
 # Syncs the webapp secret from Vault to a Kubernetes secret
 
-resource "kubectl_manifest" "webapp_secret" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "webapp_secret" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultStaticSecret"
     metadata = {
@@ -189,16 +189,16 @@ resource "kubectl_manifest" "webapp_secret" {
       # Check for updates every 30 seconds
       refreshAfter = "30s"
     }
-  })
+  }
 
-  depends_on = [kubectl_manifest.vault_auth_static]
+  depends_on = [kubernetes_manifest.vault_auth_static]
 }
 
 # VaultStaticSecret Resource - Elasticsearch Configuration
 # Syncs the Elasticsearch secret from Vault to a Kubernetes secret
 
-resource "kubectl_manifest" "elasticsearch_secret" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "elasticsearch_secret" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultStaticSecret"
     metadata = {
@@ -223,7 +223,7 @@ resource "kubectl_manifest" "elasticsearch_secret" {
       # Check for updates every 30 seconds
       refreshAfter = "30s"
     }
-  })
+  }
 
-  depends_on = [kubectl_manifest.vault_auth_static]
+  depends_on = [kubernetes_manifest.vault_auth_static]
 }

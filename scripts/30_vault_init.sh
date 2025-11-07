@@ -4,7 +4,7 @@
 # This script checks if Vault is already initialised, initialises it with a single key,
 # and saves the root token to .env and all credentials to vault-init.json
 
-set -e
+set -euo pipefail
 
 # Source centralised colour configuration
 source "$(dirname "$0")/lib/colors.sh"

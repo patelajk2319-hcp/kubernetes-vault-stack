@@ -1,4 +1,4 @@
-# Note: VSO itself is deployed via Helm in the tf-core module, 
+# Note: VSO itself is deployed via Helm in the tf-core module,
 # This module configures VSO!!
 
 # ============================================================================
@@ -33,8 +33,8 @@ resource "vault_kubernetes_auth_backend_config" "config" {
 
 # This is a shared resource - both static secrets (tf-static-elk) and
 # dynamic secrets (tf-dynamic-elk) reference this same connection
-resource "kubectl_manifest" "vault_connection" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "vault_connection" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultConnection"
     metadata = {
@@ -49,7 +49,7 @@ resource "kubectl_manifest" "vault_connection" {
       # For production, set to false and configure proper TLS
       skipTLSVerify = true
     }
-  })
+  }
 
   depends_on = [vault_kubernetes_auth_backend_config.config]
 }

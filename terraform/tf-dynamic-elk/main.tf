@@ -66,8 +66,8 @@ resource "vault_policy" "elasticsearch_dynamic" {
 # Update existing Kubernetes auth role to include dynamic credentials policy
 # Note: This assumes kubernetes auth is already configured by tf-vso
 resource "vault_kubernetes_auth_backend_role" "elasticsearch_dynamic_role" {
-  backend   = "kubernetes"
-  #the role name below must match the k8s crd (kubectl_manifest: vault_auth_dynamic) 
+  backend = "kubernetes"
+  # The role name below must match the k8s CRD (kubernetes_manifest: vault_auth_dynamic)
   role_name = "elasticsearch-dynamic-role"
 
   bound_service_account_names = [
@@ -78,8 +78,8 @@ resource "vault_kubernetes_auth_backend_role" "elasticsearch_dynamic_role" {
   bound_service_account_namespaces = [var.namespace]
   # bind the Vault Policy to this role, so that only this role can access credentials
   # in other words - when login in using this auth method, these are the secrets i have access to
-  token_policies                   = [vault_policy.elasticsearch_dynamic.name]
-  token_ttl                        = 3600
+  token_policies = [vault_policy.elasticsearch_dynamic.name]
+  token_ttl      = 3600
 
   # Required audience claim in JWT token
   # Format: <namespace>-<app>-<purpose>
@@ -110,8 +110,8 @@ resource "kubernetes_service_account" "dynamic_webapp" {
 # - References the shared VaultConnection (created by tf-vso module)
 # - Authenticates as the elasticsearch-dynamic-role
 # - Allows VSO to request dynamic Elasticsearch credentials from Vault
-resource "kubectl_manifest" "vault_auth_dynamic" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "vault_auth_dynamic" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultAuth"
     metadata = {
@@ -138,7 +138,7 @@ resource "kubectl_manifest" "vault_auth_dynamic" {
         audiences = ["vault-stack-dynamic-webapp-vault-auth"]
       }
     }
-  })
+  }
 
   # Ensure the Vault role exists before creating this auth resource
   depends_on = [vault_kubernetes_auth_backend_role.elasticsearch_dynamic_role]
@@ -152,10 +152,10 @@ resource "kubectl_manifest" "vault_auth_dynamic" {
 # - Generates NEW credentials when the lease can no longer be renewed (every 5 minutes with current config)
 # - Automatically syncs credentials to a Kubernetes secret
 # - Revokes old credentials when new ones are generated
-# - Updates mounted files in running pods 
+# - Updates mounted files in running pods
 
-resource "kubectl_manifest" "elasticsearch_dynamic_secret" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "elasticsearch_dynamic_secret" {
+  manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
     kind       = "VaultDynamicSecret"
     metadata = {
@@ -182,17 +182,15 @@ resource "kubectl_manifest" "elasticsearch_dynamic_secret" {
       }
 
       # How often to check and renew the lease (60 seconds)
-      # Note: This renews the SAME credentials, not generate new ones
-      # New credentials are only generated when max_ttl is reached
       refreshAfter = "60s"
 
       # Automatically revoke credentials in Vault when they're rotated
       revoke = true
     }
-  })
+  }
 
   depends_on = [
-    kubectl_manifest.vault_auth_dynamic,
+    kubernetes_manifest.vault_auth_dynamic,
     vault_database_secret_backend_role.elasticsearch
   ]
 }
