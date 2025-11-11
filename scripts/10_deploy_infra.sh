@@ -46,6 +46,12 @@ else
   echo ""
 fi
 
+# Create required directories for ELK stack
+echo -e "${BLUE}Creating required directories...${NC}"
+mkdir -p fleet-tokens vault-audit-logs
+echo -e "${GREEN}✓ Directories created${NC}"
+echo ""
+
 # Start ELK stack
 echo -e "${BLUE}Starting ELK stack containers...${NC}"
 if podman-compose -f elk-compose.yml up -d; then
