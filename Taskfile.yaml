@@ -10,6 +10,7 @@ tasks:
   # Main deployment command (Terraform)
   up:
     desc: Deploy the entire Vault stack using Terraform
+    aliases: [infra]
     deps:
       - pre-deploy-checks
     cmds:

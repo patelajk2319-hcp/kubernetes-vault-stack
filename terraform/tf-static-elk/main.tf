@@ -1,20 +1,16 @@
-# ============================================================================
 # Static Elasticsearch Secrets Demo
-# ============================================================================
 
-
-# KV v2 Secrets Engine Mount
+# KV v2 mount
 resource "vault_mount" "kvv2" {
   path = "kvv2"
   type = "kv"
   options = {
-    version = "2" # Use KV version 2 for versioning and soft delete
+    version = "2"
   }
-  description = "KV v2 secrets engine for static secrets demonstration"
+  description = "KV v2 secrets engine for static secrets"
 }
 
-# Webapp Configuration Secret
-# Stores static credentials for the demo
+# Webapp configuration secret
 resource "vault_kv_secret_v2" "webapp_config" {
   mount = vault_mount.kvv2.path
   name  = "webapp/config"
@@ -27,15 +23,7 @@ resource "vault_kv_secret_v2" "webapp_config" {
   depends_on = [vault_mount.kvv2]
 }
 
-# Elasticsearch Configuration Secret
-# Stores Elasticsearch connection details for applications
-
-# This secret contains:
-# - Connection details: host, port, protocol
-# - Admin credentials: username, password
-# - Configuration: index name, full URL
-
-# VSO will sync this to a Kubernetes secret named "elasticsearch-secret"
+# Elasticsearch configuration secret
 resource "vault_kv_secret_v2" "elasticsearch_config" {
   mount = vault_mount.kvv2.path
   name  = "elasticsearch/config"
@@ -47,19 +35,13 @@ resource "vault_kv_secret_v2" "elasticsearch_config" {
     es_username = var.elasticsearch_username
     es_password = var.elasticsearch_password
     es_index    = var.elasticsearch_index
-    # Computed full URL for convenience
-    es_url = "${var.elasticsearch_protocol}://${var.elasticsearch_host}:${var.elasticsearch_port}"
+    es_url      = "${var.elasticsearch_protocol}://${var.elasticsearch_host}:${var.elasticsearch_port}"
   })
 
   depends_on = [vault_mount.kvv2]
 }
 
-# ============================================================================
-# Kubernetes Service Account
-# ============================================================================
-
-# Service Account for Static Secrets Demo
-# This service account is used by the webapp to authenticate to Vault
+# Service account for static secrets demo
 resource "kubernetes_service_account" "static_webapp" {
   metadata {
     name      = "elk-static-webapp-svc-acc"
@@ -67,66 +49,24 @@ resource "kubernetes_service_account" "static_webapp" {
   }
 }
 
-# Static Secrets Vault Policy
-# Creates the policy in Vault from the policy document
+# Vault policy for static secrets
 resource "vault_policy" "static_secrets_policy" {
   name   = "static-secrets-policy"
   policy = data.vault_policy_document.static_secrets_policy.hcl
 }
 
-# ============================================================================
-# Kubernetes Auth Role
-# ============================================================================
-
-# Static Secrets Kubernetes Auth Role
-# Maps Kubernetes service accounts to Vault policies for static secrets
-#
-# This role:
-# - Binds to specific service accounts (default, VSO controller)
-# - Restricts to a specific namespace
-# - Attaches the static-secrets-policy (grants read access to KV secrets)
-# - Issues tokens with 1-hour TTL
-# - Requires "vault" audience in JWT tokens
-#
-# When a pod with the "default" service account authenticates:
-# 1. Vault validates the pod is in the correct namespace
-# 2. Vault verifies the service account name matches
-# 3. Vault issues a token with static-secrets-policy attached
-# 4. Pod can now read secrets defined in static-secrets-policy
+# Kubernetes auth role for static secrets
 resource "vault_kubernetes_auth_backend_role" "static_secrets_role" {
-  backend   = "kubernetes"
-  role_name = "static-secrets-role"
-  # Service accounts that can use this role
-  bound_service_account_names = [
-    kubernetes_service_account.static_webapp.metadata[0].name,
-    "vault-secrets-operator-controller-manager"
-  ]
-  # Namespaces where these service accounts can authenticate
+  backend                          = "kubernetes"
+  role_name                        = "static-secrets-role"
+  bound_service_account_names      = [kubernetes_service_account.static_webapp.metadata[0].name, "vault-secrets-operator-controller-manager"]
   bound_service_account_namespaces = [var.namespace]
-  # Policies attached to the issued Vault token
-  token_policies = [vault_policy.static_secrets_policy.name]
-  # Token lifetime (1 hour)
-  token_ttl = 3600
-  # Required audience claim in JWT token
-  # Format: <namespace>-<app>-<purpose>
-  audience = "vault-stack-static-webapp-vault-auth"
+  token_policies                   = [vault_policy.static_secrets_policy.name]
+  token_ttl                        = 3600
+  audience                         = "vault-stack-static-webapp-vault-auth"
 }
 
-# ============================================================================
-# Kubernetes Resources for VSO Static Secrets
-# ============================================================================
-
-# VaultAuth Resource
-# Defines how VSO authenticates to Vault for static secrets
-#
-# This creates a VaultAuth CRD that:
-# - Uses Kubernetes auth method (service account tokens)
-# - References the shared VaultConnection (created by tf-vso module)
-# - Authenticates as the static-secrets-role
-# - Allows VSO to fetch static secrets from Vault
-#
-# The default service account is used, which is available in all pods
-# unless a different service account is specified
+# VaultAuth resource for static secrets
 resource "kubernetes_manifest" "vault_auth_static" {
   manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -136,23 +76,14 @@ resource "kubernetes_manifest" "vault_auth_static" {
       namespace = var.namespace
     }
     spec = {
-      # Reference to the shared VaultConnection
       vaultConnectionRef = "vault-connection"
-
-      # Use Kubernetes auth method
-      method = "kubernetes"
-      mount  = "kubernetes"
+      method             = "kubernetes"
+      mount              = "kubernetes"
 
       kubernetes = {
-        # Vault role that grants access to KV secrets
-        role = "static-secrets-role"
-
-        # Service account for authentication
+        role           = "static-secrets-role"
         serviceAccount = kubernetes_service_account.static_webapp.metadata[0].name
-
-        # Audience claim for JWT
-        # Must match the audience configured in the Vault role
-        audiences = ["vault-stack-static-webapp-vault-auth"]
+        audiences      = ["vault-stack-static-webapp-vault-auth"]
       }
     }
   }
@@ -160,9 +91,7 @@ resource "kubernetes_manifest" "vault_auth_static" {
   depends_on = [vault_kubernetes_auth_backend_role.static_secrets_role]
 }
 
-# VaultStaticSecret Resource - Webapp Configuration
-# Syncs the webapp secret from Vault to a Kubernetes secret
-
+# VaultStaticSecret for webapp config
 resource "kubernetes_manifest" "webapp_secret" {
   manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -172,21 +101,16 @@ resource "kubernetes_manifest" "webapp_secret" {
       namespace = var.namespace
     }
     spec = {
-      # Reference to VaultAuth for authentication
       vaultAuthRef = "vault-auth-static"
+      mount        = "kvv2"
+      type         = "kv-v2"
+      path         = "webapp/config"
 
-      # KV v2 mount and path
-      mount = "kvv2"
-      type  = "kv-v2"
-      path  = "webapp/config"
-
-      # Destination Kubernetes secret
       destination = {
         name   = "webapp-secret"
-        create = true # VSO creates the secret if it doesn't exist
+        create = true
       }
 
-      # Check for updates every 30 seconds
       refreshAfter = "30s"
     }
   }
@@ -194,9 +118,7 @@ resource "kubernetes_manifest" "webapp_secret" {
   depends_on = [kubernetes_manifest.vault_auth_static]
 }
 
-# VaultStaticSecret Resource - Elasticsearch Configuration
-# Syncs the Elasticsearch secret from Vault to a Kubernetes secret
-
+# VaultStaticSecret for Elasticsearch config
 resource "kubernetes_manifest" "elasticsearch_secret" {
   manifest = {
     apiVersion = "secrets.hashicorp.com/v1beta1"
@@ -206,21 +128,16 @@ resource "kubernetes_manifest" "elasticsearch_secret" {
       namespace = var.namespace
     }
     spec = {
-      # Reference to VaultAuth for authentication
       vaultAuthRef = "vault-auth-static"
+      mount        = "kvv2"
+      type         = "kv-v2"
+      path         = "elasticsearch/config"
 
-      # KV v2 mount and path
-      mount = "kvv2"
-      type  = "kv-v2"
-      path  = "elasticsearch/config"
-
-      # Destination Kubernetes secret
       destination = {
         name   = "elasticsearch-secret"
         create = true
       }
 
-      # Check for updates every 30 seconds
       refreshAfter = "30s"
     }
   }

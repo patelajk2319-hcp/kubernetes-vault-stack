@@ -1,11 +1,12 @@
 #!/bin/bash
+set -euo pipefail
 
 # Pre-deployment checks - verify required tools are installed
 
 # Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
 
-echo -e "${BLUE}Checking prerequisites...${NC}"
+echo -e "${BLUE}Checking prerequisites${NC}"
 MISSING=""
 
 command -v kubectl >/dev/null 2>&1 || MISSING="$MISSING kubectl"
@@ -17,6 +18,10 @@ if [ -n "$MISSING" ]; then
   echo "Please install them and try again"
   exit 1
 fi
+
+# Display current kubectl context
+CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "none")
+echo -e "${BLUE}Current kubectl context: ${GREEN}${CURRENT_CONTEXT}${NC}"
 
 # Check if kubectl can connect to cluster
 if ! kubectl cluster-info >/dev/null 2>&1; then

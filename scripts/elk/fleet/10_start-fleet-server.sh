@@ -1,7 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 # scripts/elk/fleet/start-fleet-server.sh
-
-set -e
+set -euo pipefail
 
 echo "Starting Fleet Server..."
 

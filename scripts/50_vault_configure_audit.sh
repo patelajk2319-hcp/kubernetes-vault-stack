@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Colour codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Colour
+# Source centralised colour configuration
+source "$(dirname "$0")/lib/colors.sh"
 
 # Configuration
 NAMESPACE="${NAMESPACE:-vault-stack}"
@@ -73,7 +69,7 @@ for i in {1..24}; do
     echo -e "${GREEN}✓ Kibana is accessible${NC}"
     break
   fi
-  if [ $i -eq 1 ]; then
+  if [ "$i" -eq 1 ]; then
     echo -e "${YELLOW}Kibana not ready yet, waiting...${NC}"
   fi
   echo -ne "${BLUE}\rWaiting: ${i}5s / 120s${NC}"
@@ -88,13 +84,22 @@ if [ "$KIBANA_ACCESSIBLE" = false ]; then
   exit 1
 fi
 
-# Get minikube IP for Vault access
-MINIKUBE_IP=$(minikube ip)
-echo -e "${BLUE}Minikube IP: ${MINIKUBE_IP}${NC}"
+# Get Vault external URL based on cluster type
+VAULT_NODEPORT=$(kubectl get svc -n "$NAMESPACE" vault-nodeport -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "")
 
-# Get Vault NodePort
-VAULT_NODEPORT=$(kubectl get svc -n "$NAMESPACE" vault-nodeport -o jsonpath='{.spec.ports[0].nodePort}')
-VAULT_EXTERNAL_URL="http://${MINIKUBE_IP}:${VAULT_NODEPORT}"
+if command -v minikube >/dev/null 2>&1 && minikube status >/dev/null 2>&1; then
+  CLUSTER_IP=$(minikube ip)
+  VAULT_EXTERNAL_URL="http://${CLUSTER_IP}:${VAULT_NODEPORT}"
+else
+  # For AKS or other clusters, check for LoadBalancer IP
+  LB_IP=$(kubectl get svc -n "$NAMESPACE" vault-nodeport -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+  if [ -n "$LB_IP" ]; then
+    VAULT_EXTERNAL_URL="http://${LB_IP}:${VAULT_NODEPORT}"
+  else
+    # Fallback to localhost (assumes port-forwarding)
+    VAULT_EXTERNAL_URL="http://localhost:8200"
+  fi
+fi
 
 echo -e "${BLUE}Vault external URL: ${VAULT_EXTERNAL_URL}${NC}"
 echo

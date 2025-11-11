@@ -1,5 +1,5 @@
-#!/bin/sh
-set -eu
+#!/bin/bash
+set -euo pipefail
 
 echo "=== Elasticsearch User Setup with TLS ==="
 

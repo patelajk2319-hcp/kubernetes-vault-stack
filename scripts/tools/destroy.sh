@@ -51,14 +51,18 @@ cd "$PROJECT_ROOT"
 
 # Check if Vault is accessible
 VAULT_ACCESSIBLE=false
-source .env 2>/dev/null || true
-if [ -n "$VAULT_ADDR" ] && [ -n "$VAULT_TOKEN" ]; then
-  if vault status >/dev/null 2>&1; then
-    VAULT_ACCESSIBLE=true
-    echo -e "${GREEN}✓ Vault is accessible${NC}"
-  else
-    echo -e "${YELLOW}⚠ Vault is not accessible - will skip Terraform destroy for VSO modules${NC}"
+if [ -f .env ]; then
+  source .env || true
+  if [ -n "${VAULT_ADDR:-}" ] && [ -n "${VAULT_TOKEN:-}" ]; then
+    if vault status >/dev/null 2>&1; then
+      VAULT_ACCESSIBLE=true
+      echo -e "${GREEN}✓ Vault is accessible${NC}"
+    else
+      echo -e "${YELLOW}⚠ Vault is not accessible - will skip Terraform destroy for VSO modules${NC}"
+    fi
   fi
+else
+  echo -e "${YELLOW}⚠ .env file not found - will clean up all resources via kubectl${NC}"
 fi
 
 # 1. Destroy dynamic ELK credentials demo
@@ -147,13 +151,15 @@ echo ""
 # Clean up processes
 # ============================================================================
 
-echo -e "${BLUE}Stopping port-forwards...${NC}"
+echo -e "${BLUE}Stopping port-forwards${NC}"
 pkill -f "port-forward.*${NAMESPACE}" 2>/dev/null || true
 echo -e "${GREEN}✓ Port-forwards stopped${NC}"
 
-echo -e "${BLUE}Stopping minikube mount...${NC}"
-pkill -f "minikube mount" 2>/dev/null || true
-echo -e "${GREEN}✓ Minikube mount stopped${NC}"
+if command -v minikube >/dev/null 2>&1 && pgrep -f "minikube mount" >/dev/null 2>&1; then
+  echo -e "${BLUE}Stopping minikube mount${NC}"
+  pkill -f "minikube mount" 2>/dev/null || true
+  echo -e "${GREEN}✓ Minikube mount stopped${NC}"
+fi
 
 echo ""
 
