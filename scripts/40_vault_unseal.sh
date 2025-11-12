@@ -3,7 +3,7 @@
 # Unseal Vault using the unseal key from vault-init.json
 # This script checks if Vault has been initialised and unseals it
 
-set -e
+set -euo pipefail
 
 # Source centralised colour configuration
 source "$(dirname "$0")/lib/colors.sh"

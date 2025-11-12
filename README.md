@@ -1,327 +1,133 @@
-## Overview
+# Kubernetes Vault Stack
 
-This stack deploys a complete Vault Enterprise environment on Kubernetes with:
-- **Security**: Vault Enterprise with Raft storage backend
-- **Secret Management**: Vault Secrets Operator (VSO) for native Kubernetes secret synchronisation
-- **Monitoring**: Grafana, Prometheus, Loki, Promtail
-- **Data Services**: Elasticsearch, Kibana (via ECK operator)
-- **Observability**: Unified logging and metrics collection
+HashiCorp Vault Enterprise deployment on Kubernetes with Vault Secrets Operator, ELK stack, and observability tools.
+
+## Features
+
+- **Vault Enterprise** - Raft storage backend
+- **Vault Secrets Operator (VSO)** - Native Kubernetes secret synchronisation
+- **ELK Stack** - Elasticsearch, Kibana (via ECK)
+- **Observability** - Grafana, Prometheus, Loki, Promtail
+- **Dynamic Secrets** - Time-limited Elasticsearch credentials
+- **TLS Everywhere** - Automatic certificate generation
 
 ## Prerequisites
 
 - Kubernetes cluster (1.20+)
-- `kubectl` configured and connected to the cluster
-- `terraform` (>= 1.5.0) - Infrastructure as Code
-- `task` (Task runner)
-- `jq` (JSON processor)
-- Vault Enterprise license (add to `licenses/vault-enterprise/license.lic`)
+- `kubectl`, `terraform` (>= 1.5.0), `task`, `jq`
+- Vault Enterprise licence
 
 ## Quick Start
 
-### 1. Clone Repository
+### 1. Add Vault Licence
 
 ```bash
-git clone <repository-url>
-cd kubernetes-vault-stack
-```
-
-### 2. Configure Vault Licence
-
-Add your Vault Enterprise licence:
-
-```bash
-# Copy the licence template
 cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/license.lic
-
-# Edit the licence file and add your actual licence key
-# Replace YOUR_VAULT_ENTERPRISE_LICENSE_KEY_HERE with your actual licence
+# Edit license.lic and add your Vault Enterprise licence
 ```
 
-### 3. Deploy
+### 2. Deploy
 
 ```bash
 task up        # Deploy infrastructure
 task init      # Initialise Vault
-task unseal    # Unseal Vault and start port forwarding
+task unseal    # Unseal Vault
 ```
 
-That's it! These three commands:
-- ✅ Deploy all infrastructure (Terraform)
-- ✅ Generate TLS certificates
-- ✅ Create Kubernetes secrets
-- ✅ Deploy Helm charts (Vault, ELK, Grafana, Prometheus, Loki)
-- ✅ Initialise Vault
-- ✅ Unseal Vault
-- ✅ Set up port forwarding automatically
-- ✅ Update `.env` with Vault token
+### 3. Access Services
 
-Services are now accessible at:
+Services are available at:
 - **Vault**: http://localhost:8200
-- **Grafana**: http://localhost:3000
-- **Prometheus**: http://localhost:9090
 - **Kibana**: https://localhost:5601
 - **Elasticsearch**: https://localhost:9200
-
-### 4. Use Vault CLI
+- **Grafana**: http://localhost:3000
+- **Prometheus**: http://localhost:9090
 
 ```bash
-source .env
+source .env    # Load Vault credentials
 vault status
-vault secrets list
-```
-
-### 5. View Access Information
-
-```bash
-task info
+task info      # View all access information
 ```
 
 ## Available Commands
 
 ```bash
-task                    # List all available commands
-task up                 # Deploy the entire stack (Terraform)
-task init               # Initialise Vault
-task unseal             # Unseal Vault and start port forwarding
-task status             # Show status of all components
-task info               # Show access information and credentials
-task logs               # View logs for a service (usage: task logs -- <service-name>)
-task vso                # Configure and deploy Vault Secrets Operator (static secrets)
-task vso-webapp         # Access VSO demo webapp
-task vso-update         # Update secrets to test VSO synchronisation
-task elk-dynamic        # Deploy Elasticsearch dynamic credentials demo (alias: dynamic)
-task elk-dynamic-webapp # Access Elasticsearch dynamic credentials demo
-task elk-dynamic-test   # Force credential rotation
-task elk-dynamic-creds  # View current dynamic credentials
-task clean              # Destroy the entire stack (Terraform)
-task rm                 # Alias for clean
+task               # List all commands
+task up            # Deploy stack
+task init          # Initialise Vault
+task unseal        # Unseal Vault
+task status        # Show component status
+task info          # Show credentials
+task logs          # View service logs
+task vso           # Deploy VSO static secrets demo
+task elk:dynamic   # Deploy dynamic credentials demo (alias: dynamic)
+task clean         # Destroy stack (alias: rm)
 ```
 
-## Accessing Services
+## Demos
 
-After running `task unseal`, port forwarding is automatically set up, and services are available at:
+### Static Secrets (VSO)
 
-- **Vault UI**: http://localhost:8200/ui
-- **Vault CLI**: `source .env && vault status`
-- **Grafana**: http://localhost:3000
-- **Prometheus**: http://localhost:9090
-- **Elasticsearch**: https://localhost:9200
-- **Kibana**: http://localhost:5601
-
-## Credentials
-
-### Vault
-After running `task init`, credentials are saved to:
-- **Root Token**: `.env` file (also in `vault-init.json`)
-- **Unseal Key**: `vault-init.json`
-
-To use Vault CLI:
-```bash
-source .env
-vault status
-vault secrets list
-```
-
-### Service Credentials
-
-Credentials are managed as follows:
-
-- **Elasticsearch**: Password is auto-generated by ECK operator and stored in Kubernetes secret `elasticsearch-es-elastic-user`
-- **Kibana**: Uses Elasticsearch credentials (user: `elastic`)
-- **Grafana**: Default credentials: `admin` / `admin` (configured in `helm-chart/vault-stack/values/grafana/grafana.yaml`)
-
-To view all credentials:
-```bash
-task info
-```
-
-Or retrieve the Elasticsearch password manually:
-```bash
-kubectl get secret elasticsearch-es-elastic-user -n vault-stack -o jsonpath='{.data.elastic}' | base64 -d
-```
-
-**Note**: Default credentials are set for development convenience.
-
-## Usage Examples
-
-### View Component Status
+VSO synchronises Vault secrets to Kubernetes secrets automatically.
 
 ```bash
-task status
+task vso           # Deploy demo
+task vso-update    # Update secrets to test sync
+task info          # View credentials
 ```
 
-Shows:
-- Pod status
-- Services
-- Vault status (initialised, sealed state)
+### Dynamic Credentials
 
-### View Service Logs
+Vault generates time-limited Elasticsearch credentials that rotate automatically.
 
 ```bash
-# View Vault logs
-task logs -- vault
-
-# View Elasticsearch logs
-task logs -- elasticsearch
-
-# View Kibana logs
-task logs -- kibana
-
-# Without service name, shows available services
-task logs
+task elk:dynamic   # Deploy demo (alias: dynamic)
+task info          # View current credentials
 ```
 
-### Vault Secrets Operator (VSO) - Static Secrets
-
-Demonstrates VSO synchronising static secrets from Vault to Kubernetes.
-
-```bash
-# After deploying and unsealing Vault, run the VSO task
-task vso
-
-# Access demo webapp
-task vso-webapp  # http://localhost:8080
-
-# Update secrets to test synchronisation
-task vso-update
-```
-
-### Elasticsearch Dynamic Credentials
-
-Demonstrates Vault's database secrets engine generating time-limited, automatically-rotated credentials for Elasticsearch.
-
-```bash
-# Deploy dynamic credentials demo
-task elk-dynamic  # or: task dynamic
-
-# Access demo webapp (shows live credential rotation)
-task elk-dynamic-webapp  # http://localhost:8090
-
-# Force credential rotation (restart pod with new credentials)
-task elk-dynamic-test
-
-# View current credentials
-task elk-dynamic-creds
-```
-
-**Key Features:**
-- ✅ **Automatic generation** - Vault creates unique Elasticsearch users on-demand
-- ✅ **Time-limited** - Credentials expire after 5 minutes (configurable)
-- ✅ **Auto-rotation** - New credentials generated every 60 seconds
-- ✅ **Auto-revocation** - Old credentials automatically deleted by Vault
-- ✅ **Zero manual intervention** - No password rotation scripts needed
-
-### Clean and Redeploy
-
-```bash
-# Destroy everything
-task clean    # or: task rm
-
-# Redeploy from scratch
-task up
-task init
-task unseal
-```
+**Features:**
+- Auto-generated unique users
+- 5-minute credential lifetime
+- 60-second rotation interval
+- Automatic revocation
 
 ## Configuration
 
 ### Terraform Variables
 
-Infrastructure configuration is managed via Terraform variables in `tf-core/variables.tf`:
+`terraform/tf-core/variables.tf`:
 
 ```hcl
-namespace              = "vault-stack"           # Kubernetes namespace
-release_name           = "vault-stack"           # Helm release name
-chart_path             = "../helm-chart/vault-stack"
-vault_license_file     = "../licenses/vault-enterprise/license.lic"
-cert_validity_hours    = 8760                    # Certificate validity (1 year)
+namespace            = "vault-stack"
+cert_validity_hours  = 8760  # 1 year
 ```
-
-To customise, create a `terraform.tfvars` file:
-
-```hcl
-namespace = "my-vault"
-cert_validity_hours = 17520  # 2 years
-```
-
-For advanced Terraform configuration, see the `tf-core/` directory.
 
 ### Helm Values
 
-The deployment uses a modular values structure in `helm-chart/vault-stack/values/`:
+Values files in `helm-chart/vault-stack/values/`:
+- `vault/vault.yaml` - Vault configuration
+- `grafana/grafana.yaml` - Grafana settings
+- `prometheus/prometheus.yaml` - Prometheus settings
+- `loki/loki.yaml` - Loki settings
 
-```
-values/
-├── global/global.yaml          # Global settings (namespace)
-├── vault/vault.yaml            # Vault Enterprise configuration and secrets
-├── elasticsearch/elasticsearch.yaml  # ECK operator configuration
-├── grafana/grafana.yaml        # Grafana configuration
-├── prometheus/prometheus.yaml  # Prometheus configuration
-├── loki/loki.yaml             # Loki configuration
-└── promtail/promtail.yaml     # Promtail configuration
-```
-
-Each service has its own values file for easy customisation:
-
-- Resource limits and requests
-- Replica counts
-- Storage sizes
-- Enable/disable components
-
-After making changes:
-
+Modify values, then redeploy:
 ```bash
-task clean
-task up
+task clean && task up && task init && task unseal
 ```
-
-### Environment Variables
-
-The `.env` file is automatically created by Terraform during `task up` and contains:
-
-```bash
-# Vault address - required for Vault CLI commands
-export VAULT_ADDR=http://127.0.0.1:8200
-
-# Vault Enterprise licence - read from licenses/vault-enterprise/license.lic
-export VAULT_LICENSE=<auto-populated-from-license-file>
-
-# Vault root token - dynamically generated during 'task init'
-export VAULT_TOKEN=<auto-populated-during-init>
-```
-
-**Note**:
-- The `.env` file is automatically created by Terraform - you don't need to create it manually
-- Vault license is automatically read from `licenses/vault-enterprise/license.lic` and embedded in `.env`
-- Vault root token is generated and updated in `.env` during `task init`
-- Unseal key is stored only in `vault-init.json`, not in `.env`
-- The `.env` file is destroyed when running `task clean`
-
-## Architecture
-
-### Components
-
-All components use official Helm charts from vendors:
-
-- **Vault Enterprise** (HashiCorp) - Secret management with Raft storage backend
-- **Elasticsearch** (Elastic via ECK) - Log storage with TLS enabled
-- **Kibana** (Elastic via ECK) - Log visualisation and exploration
-- **Prometheus** (Prometheus Community) - Metrics collection and monitoring
-- **Grafana** (Grafana) - Unified observability dashboard
-- **Loki** (Grafana) - Log aggregation system
-- **Promtail** (Grafana) - Log collector for Kubernetes
-
-### TLS/Certificates
-
-TLS certificates are automatically generated by Terraform using the `tls` provider:
-- Self-signed CA certificate
-- Vault server certificate (signed by CA)
-- Elasticsearch certificates (using the same CA)
-- Kibana certificates (with CA verification)
-
-Certificates are valid for 1 year (8760 hours) by default. Customise with `cert_validity_hours` variable.
 
 ## Troubleshooting
+
+### Vault Sealed After Restart
+
+```bash
+task unseal
+```
+
+### Port-Forwarding Issues
+
+```bash
+./scripts/20_port_forwarding.sh
+```
 
 ### Check Prerequisites
 
@@ -329,108 +135,49 @@ Certificates are valid for 1 year (8760 hours) by default. Customise with `cert_
 task pre-deploy-checks
 ```
 
-### Pod Not Starting
+### Pod Logs
 
 ```bash
-# Check pod status
-task status
-
-# View pod logs
 task logs -- <pod-name>
-
-# Describe pod for events
 kubectl describe pod -n vault-stack <pod-name>
 ```
 
-### Vault is Sealed After Restart
+### Kibana Login with Dynamic Credentials
 
-Vault needs to be unsealed after pod restarts:
+Dynamic credentials require `allow_restricted_indices: true` for Kibana system indices. This is automatically configured by `task elk:dynamic`.
 
+Verify:
 ```bash
-task unseal
+curl -k -u elastic:password123 "https://localhost:9200/_security/role/vault_es_role" | jq '.vault_es_role.indices[0].allow_restricted_indices'
 ```
 
-Or manually:
+Should return `true`.
 
-```bash
-kubectl exec -n vault-stack vault-0 -- vault status
-UNSEAL_KEY=$(cat vault-init.json | jq -r '.unseal_keys_b64[0]')
-kubectl exec -n vault-stack vault-0 -- vault operator unseal $UNSEAL_KEY
-```
+## Architecture
 
-### Port-Forwards Not Responding
+All components use official Helm charts:
 
-If port-forwarding stops working, restart it:
+- **Vault Enterprise** (HashiCorp)
+- **Vault Secrets Operator** (HashiCorp)
+- **Elasticsearch + Kibana** (Elastic via ECK)
+- **Prometheus** (Prometheus Community)
+- **Grafana** (Grafana Labs)
+- **Loki + Promtail** (Grafana Labs)
 
-```bash
-./scripts/20_port_forwarding.sh
-```
-
-### Cannot Connect to Kubernetes Cluster
-
-```bash
-# Check cluster connection
-kubectl cluster-info
-
-# Check current context
-kubectl config current-context
-
-# List available contexts
-kubectl config get-contexts
-```
-
-### Kibana UI Login Fails with Dynamic Credentials
-
-If browser-based login to Kibana fails with dynamic Elasticsearch credentials (but API authentication works):
-
-**Cause**: The custom `vault_es_role` must include `"allow_restricted_indices": true` to grant access to Kibana system indices (`.kibana_security_session_1`, `.kibana_8.12.0_001`, etc.). Without this, dynamic users cannot persist sessions.
-
-**Solution**: The role is automatically created with the correct permissions by `task elk-dynamic`. To verify or recreate manually:
-
-```bash
-# Verify the role has allow_restricted_indices enabled
-curl -k -u elastic:password123 "https://localhost:9200/_security/role/vault_es_role" | \
-  jq '.vault_es_role.indices[0].allow_restricted_indices'
-# Should return: true
-
-# If false, recreate the role (this is done automatically by deployment script)
-curl -k -u elastic:password123 -X PUT "https://localhost:9200/_security/role/vault_es_role" \
-  -H 'Content-Type: application/json' -d'
-{
-  "cluster": ["monitor", "manage_index_templates", "monitor_ml", "monitor_watcher", "monitor_transform"],
-  "indices": [{
-    "names": ["*"],
-    "privileges": ["read", "write", "create_index", "delete_index", "view_index_metadata", "monitor"],
-    "allow_restricted_indices": true
-  }],
-  "applications": [{
-    "application": "kibana-.kibana",
-    "privileges": ["all"],
-    "resources": ["*"]
-  }],
-  "run_as": []
-}'
-```
-
-**Verify access**:
-```bash
-# Get current credentials
-task info
-
-# Test access to Kibana system index (replace credentials with output from task info)
-curl -k -u "USERNAME:PASSWORD" "https://localhost:9200/.kibana_security_session_1/_search?size=0"
-# Should return search results, not 401 Unauthorized
-```
-
-**Note**: Credentials rotate every 5 minutes. Use `task info` to get fresh credentials if login fails due to expiration.
+TLS certificates are automatically generated via Terraform's `tls` provider.
 
 ## Development
 
-### Adding New Services
+To add new services:
+1. Add Helm chart to `terraform/tf-core/modules/helm-releases/main.tf`
+2. Create values file in `helm-chart/vault-stack/values/<service>/`
+3. Add port-forwarding to `scripts/20_port_forwarding.sh` if needed
+4. Update `scripts/tools/info.sh` for credentials
 
-1. Add official Helm chart dependency to `helm-chart/vault-stack/Chart.yaml`
-2. Create a new values file in `helm-chart/vault-stack/values/<service>/<service>.yaml`
-3. Update Terraform module in `tf-core/modules/helm-releases/main.tf` to include new values file
-4. Add NodePort service in `tf-core/main.tf` if external access is needed
-5. Update `task port-forward` in `Taskfile.yaml` if using port forwarding
-6. Update `task info` in `scripts/tools/info.sh` for credential display
+## Cleaning Up
+
+```bash
+task clean    # or: task rm
+```
+
+Removes all infrastructure including Kubernetes resources, PVs, and local files.

@@ -67,13 +67,20 @@
 
 ## Infrastructure Standards
 
+### Mandatory Validation Rules:
+**ALWAYS run these validation checks when modifying the stack:**
+- **Shellcheck**: Run `shellcheck` on all modified shell scripts - fix ALL errors and warnings
+- **Terraform fmt**: Run `terraform fmt -recursive terraform/` - ALL files must be in canonical format
+- **Terraform validate**: Run `terraform validate` on ALL modified Terraform modules - fix ALL errors
+- **These checks are MANDATORY** - never skip them or commit code that fails validation
+- Fix all validation errors immediately - do not proceed until all checks pass
+
 ### Terraform Requirements:
 - **ONLY use official Terraform providers** (published by HashiCorp or the vendor themselves)
 - **NEVER use community providers**
 - Follow Terraform best practices at all times
 - Use proper state management
 - Use modules for clear separation of concerns
-- Run terraform fmt so that the files are in canonical format
 - All Terraform changes must go through the automation workflow
 
 ### Helm Requirements:
@@ -90,6 +97,12 @@
 - Use namespaces appropriately
 - Implement proper RBAC
 - All K8s manifests must be part of the automation
+
+## Script Management:
+- **NEVER delete scripts in the `scripts/useful/` directory**
+- The useful folder contains reference scripts and helpful commands for debugging and manual operations
+- These scripts are intentionally kept for developer reference even if not used in automation
+- You may clean up unused scripts in other directories, but preserve everything in `scripts/useful/`
 
 ## Vault Configuration:
 - Vault initialisation and unsealing are critical final steps
@@ -111,12 +124,14 @@
 9. **STOP and ask user for permission before merging to main**
 
 ## Summary:
-- This CLAUDE.md file is read-only - never modify it
+- This CLAUDE.md file is read-only - never modify it (except with explicit user permission)
 - All comments and documentation must use UK English spelling and grammar
+- **MANDATORY: Always run shellcheck, terraform fmt, and terraform validate before committing**
 - Check current branch at start - only create `claude-<random>` branch if currently on main
 - The automation must be the source of truth
 - If something fails, fix the automation code itself, not just the immediate problem
 - Always validate fixes by running the complete deployment sequence
 - Main branch is protected - never commit, merge, or push to it without explicit user permission
 - Only official providers and charts are allowed
+- Never delete scripts in the `scripts/useful/` directory
 - Best practices must be followed at all times

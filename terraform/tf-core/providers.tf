@@ -4,11 +4,11 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
+      version = "~> 2.38"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.11"
+      version = "~> 2.16"
     }
     tls = {
       source  = "hashicorp/tls"
@@ -16,15 +16,11 @@ terraform {
     }
     local = {
       source  = "hashicorp/local"
-      version = "~> 2.4"
-    }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
+      version = "~> 2.5"
     }
     time = {
       source  = "hashicorp/time"
-      version = "~> 0.9"
+      version = "~> 0.12"
     }
   }
 }
@@ -37,9 +33,5 @@ provider "helm" {
   kubernetes {
     config_path = "~/.kube/config"
   }
-}
-
-provider "kubectl" {
-  config_path = "~/.kube/config"
 }
 

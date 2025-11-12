@@ -1,12 +1,12 @@
 #!/bin/sh
 # scripts/elk/fleet/init-fleet.sh
-# This script initializes Elastic Fleet in a Kibana environment.
-# It sets up Fleet, configures outputs, creates policies, and generates tokens for Fleet Server and agent enrollment.
+# This script initialises Elastic Fleet in a Kibana environment.
+# It sets up Fleet, configures outputs, creates policies, and generates tokens for Fleet Server and agent enrolment.
 
-# Exit immediately if a command exits with a non-zero status
-set -e
+# Note: Uses /bin/sh for container compatibility (pipefail not supported)
+set -eu
 
-echo "Initializing Fleet setup..."
+echo "Initialising Fleet setup..."
 
 # -----------------------
 # Wait for Kibana to be ready
@@ -31,7 +31,7 @@ curl -k -s -X POST "$KIBANA_HOST/api/fleet/setup" \
   -H "kbn-xsrf: true" \
   -H "Content-Type: application/json" \
   -u "$KIBANA_USER:$KIBANA_PASSWORD" \
-  --cacert "$CA_CERT" || echo "Fleet may already be initialized"
+  --cacert "$CA_CERT" || echo "Fleet may already be initialised"
 
 sleep 5
 
@@ -196,7 +196,7 @@ if [ -z "$POLICY_ID" ] && echo "$AGENT_POLICY_RESPONSE" | grep -q "409"; then
       -H "kbn-xsrf: true" \
       -u "$KIBANA_USER:$KIBANA_PASSWORD" \
       --cacert "$CA_CERT")
-    
+
     POLICY_ID=$(echo "$EXISTING_POLICIES" | grep -o '"id":"[^"]*"[^}]*"name":"Default Agent Policy"' | head -1 | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
 fi
 
@@ -232,4 +232,4 @@ else
     exit 1
 fi
 
-echo "Fleet initialization completed successfully!"
+echo "Fleet initialisation completed successfully!"

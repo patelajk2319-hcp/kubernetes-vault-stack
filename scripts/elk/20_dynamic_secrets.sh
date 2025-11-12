@@ -2,7 +2,7 @@
 
 # Deploy Elasticsearch dynamic credentials demo using Terraform
 
-set -e
+set -euo pipefail
 
 # Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
@@ -114,16 +114,4 @@ sleep 20
 
 echo ""
 echo -e "${GREEN}=== Elasticsearch Dynamic Credentials Deployed Successfully! ===${NC}"
-echo ""
-echo -e "${YELLOW}Status:${NC}"
-kubectl get vaultdynamicsecret -n "${NAMESPACE}" 2>/dev/null || echo "No VaultDynamicSecret resources found yet"
-echo ""
-kubectl get pods -l app=elk-dynamic-webapp -n "${NAMESPACE}"
-echo ""
-echo -e "${YELLOW}Secrets:${NC}"
-kubectl get secret elasticsearch-dynamic-secret -n "${NAMESPACE}" 2>/dev/null && echo "✅ Dynamic secret created" || echo "⏳ Waiting for secret creation"
-echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo -e "  - ${BLUE}task elk:webapp${NC}  - Access combined webapp (displays both static and dynamic secrets)"
-echo -e "  - ${BLUE}task elk:rotate${NC}  - Force credential rotation"
 echo ""

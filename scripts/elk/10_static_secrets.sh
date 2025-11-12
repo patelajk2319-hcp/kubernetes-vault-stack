@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -38,10 +38,6 @@ terraform apply -auto-approve
 echo ""
 echo -e "\033[0;32m=== Static Secrets Demo Deployed Successfully! ===\033[0m"
 echo ""
-echo -e "\033[0;33mNext steps:\033[0m"
-echo "  1. Deploy dynamic secrets (optional): task elk:dynamic"
-echo "  2. Access the combined webapp: task elk:webapp"
-echo "  3. Update secrets: task vso-update"
+echo -e "\033[0;34mStatic secrets are synchronised from Vault via VSO.\033[0m"
+echo -e "\033[0;34mSecrets are checked every 30 seconds for updates.\033[0m"
 echo ""
-echo -e "\033[0;34mThe webapp displays both static secrets (from VSO) and dynamic credentials.\033[0m"
-echo -e "\033[0;34mStatic secrets are checked every 30 seconds and pods restart on changes.\033[0m"

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Display access information and credentials for all services
 
@@ -11,7 +12,7 @@ echo -e "${BLUE}===================================${NC}"
 echo ""
 echo -e "${BLUE}Time Run:${NC}"
 echo "---------"
-echo "$(date '+%d %b %Y - %H:%M:%S')"
+date '+%d %b %Y - %H:%M:%S'
 echo ""
 echo -e "${BLUE}Services:${NC}"
 echo "---------"

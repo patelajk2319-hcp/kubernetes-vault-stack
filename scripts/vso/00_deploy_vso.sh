@@ -2,7 +2,7 @@
 
 # Deploy VSO demo using Terraform
 
-set -e
+set -euo pipefail
 
 # Source centralised colour configuration
 source "$(dirname "$0")/../lib/colors.sh"
@@ -52,8 +52,4 @@ echo -e "${YELLOW}Status:${NC}"
 kubectl get vaultstaticsecret -n "${NAMESPACE}"
 echo ""
 kubectl get pods -l app=webapp -n "${NAMESPACE}"
-echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo -e "  - ${BLUE}task vso-webapp${NC}  - Access demo webapp"
-echo -e "  - ${BLUE}task vso-update${NC}  - Test secret synchronisation"
 echo ""

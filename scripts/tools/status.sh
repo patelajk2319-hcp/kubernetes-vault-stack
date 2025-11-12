@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Show status of all components
 

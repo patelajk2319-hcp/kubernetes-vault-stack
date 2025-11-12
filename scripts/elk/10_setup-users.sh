@@ -1,5 +1,6 @@
 #!/bin/sh
-set -e
+# Note: Uses /bin/sh for container compatibility (pipefail not supported)
+set -eu
 
 echo "=== Elasticsearch User Setup with TLS ==="
 

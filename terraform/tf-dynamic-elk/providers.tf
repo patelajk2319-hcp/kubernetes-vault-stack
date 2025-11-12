@@ -4,19 +4,15 @@ terraform {
   required_providers {
     vault = {
       source  = "hashicorp/vault"
-      version = "~> 4.5"
+      version = "~> 5.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
-    }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
+      version = "~> 2.38"
     }
     local = {
       source  = "hashicorp/local"
-      version = "~> 2.4"
+      version = "~> 2.5"
     }
   }
 }
@@ -31,10 +27,5 @@ provider "vault" {
 
 # Kubernetes provider for managing Kubernetes resources
 provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
-
-# kubectl provider for applying Kubernetes manifests
-provider "kubectl" {
   config_path = "~/.kube/config"
 }

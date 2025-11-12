@@ -1,16 +1,14 @@
 terraform {
+  required_version = ">= 1.5.0"
+
   required_providers {
     vault = {
       source  = "hashicorp/vault"
-      version = "~> 4.5"
+      version = "~> 5.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
-    }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
+      version = "~> 2.38"
     }
   }
 }
@@ -22,9 +20,5 @@ provider "vault" {
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
-
-provider "kubectl" {
   config_path = "~/.kube/config"
 }

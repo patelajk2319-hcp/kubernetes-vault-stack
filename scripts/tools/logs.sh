@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # View logs for a service
 

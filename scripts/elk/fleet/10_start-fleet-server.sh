@@ -1,7 +1,7 @@
 #!/bin/sh
 # scripts/elk/fleet/start-fleet-server.sh
-
-set -e
+# Note: Uses /bin/sh for container compatibility (pipefail not supported)
+set -eu
 
 echo "Starting Fleet Server..."
 
