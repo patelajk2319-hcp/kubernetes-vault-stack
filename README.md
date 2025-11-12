@@ -15,7 +15,6 @@ HashiCorp Vault Enterprise deployment on Kubernetes with Vault Secrets Operator,
 
 ### System Requirements
 
-- macOS (tested on Apple Silicon)
 - [Homebrew](https://brew.sh) package manager
 - Vault Enterprise licence
 
