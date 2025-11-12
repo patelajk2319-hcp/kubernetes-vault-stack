@@ -140,7 +140,7 @@ if podman-compose -f elk-compose.yml up -d; then
 else
   echo ""
   echo -e "${RED}Failed to deploy ELK stack${NC}"
-  echo -e "${YELLOW}Check logs with: task elk-logs${NC}"
+  echo -e "${YELLOW}Check logs with: podman-compose -f elk-compose.yml logs${NC}"
   exit 1
 fi
 
