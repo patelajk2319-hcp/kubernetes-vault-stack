@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # scripts/elk/fleet/init-fleet.sh
 # This script initialises Elastic Fleet in a Kibana environment.
 # It sets up Fleet, configures outputs, creates policies, and generates tokens for Fleet Server and agent enrolment.
 
-# Exit immediately if a command exits with a non-zero status
-set -euo pipefail
+# Note: Uses /bin/sh for container compatibility (pipefail not supported)
+set -eu
 
 echo "Initialising Fleet setup..."
 
