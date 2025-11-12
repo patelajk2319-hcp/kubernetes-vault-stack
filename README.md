@@ -13,9 +13,24 @@ HashiCorp Vault Enterprise deployment on Kubernetes with Vault Secrets Operator,
 
 ## Prerequisites
 
-- Kubernetes cluster (1.20+)
-- `kubectl`, `terraform` (>= 1.5.0), `task`, `jq`
+### System Requirements
+
+- macOS (tested on Apple Silicon)
+- [Homebrew](https://brew.sh) package manager
 - Vault Enterprise licence
+
+### Install Dependencies
+
+```bash
+# Install required tools via Homebrew
+brew install minikube kubectl terraform go-task jq podman
+
+# Start Kubernetes cluster
+minikube start --driver=podman
+
+# Verify cluster is running
+kubectl cluster-info
+```
 
 ## Quick Start
 
@@ -26,13 +41,17 @@ cp licenses/vault-enterprise/license.lic.example licenses/vault-enterprise/licen
 # Edit license.lic and add your Vault Enterprise licence
 ```
 
-### 2. Deploy
+### 2. Deploy Full Infrastructure
 
 ```bash
-task up        # Deploy infrastructure
+task up        # Deploy Kubernetes + ELK stack
 task init      # Initialise Vault
 task unseal    # Unseal Vault
+task audit     # Configure audit logging
+task vso       # Deploy Vault Secrets Operator
 ```
+
+This deploys the complete infrastructure including Vault, ELK observability stack, audit logging, and VSO for secret synchronisation.
 
 ### 3. Access Services
 
@@ -66,30 +85,29 @@ task clean         # Destroy stack (alias: rm)
 
 ## Demos
 
-### Static Secrets (VSO)
+After deploying the full infrastructure (see Quick Start), you can explore advanced features:
 
-VSO synchronises Vault secrets to Kubernetes secrets automatically.
-
-```bash
-task vso           # Deploy demo
-task vso-update    # Update secrets to test sync
-task info          # View credentials
-```
-
-### Dynamic Credentials
+### Dynamic Credentials Demo
 
 Vault generates time-limited Elasticsearch credentials that rotate automatically.
 
 ```bash
-task elk:dynamic   # Deploy demo (alias: dynamic)
+task elk:dynamic   # Deploy dynamic credentials demo (alias: dynamic)
 task info          # View current credentials
 ```
 
 **Features:**
-- Auto-generated unique users
+- Auto-generated unique users with random names
 - 5-minute credential lifetime
 - 60-second rotation interval
-- Automatic revocation
+- Automatic revocation when lease expires
+
+**How it works:**
+1. VSO requests Elasticsearch credentials from Vault
+2. Vault creates a time-limited user in Elasticsearch
+3. Credentials are synchronised to a Kubernetes secret
+4. VSO automatically renews credentials before expiry
+5. When the secret is deleted, Vault revokes the Elasticsearch user
 
 ## Configuration
 
